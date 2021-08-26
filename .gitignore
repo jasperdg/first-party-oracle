@@ -2,5 +2,6 @@ target/
 res/
 scripts/
 mybuild.sh
+build.sh
 validator.sh
 myvalidator.sh
