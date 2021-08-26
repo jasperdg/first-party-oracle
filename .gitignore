@@ -1,0 +1,6 @@
+target/
+res/
+scripts/
+mybuild.sh
+validator.sh
+myvalidator.sh
