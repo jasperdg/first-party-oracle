@@ -176,7 +176,6 @@ impl RequestorContract {
     #[payable]
     pub fn set_outcome(
         &mut self,
-        request_id: U64,
         requestor: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
@@ -210,6 +209,14 @@ impl RequestorContract {
             0,
             1_000_000_000_000
         )
+    }
+
+    pub fn get_data_request(&self, nonce: U64) -> Option<DataRequest> {
+        self.data_requests.get(&u64::from(nonce))
+    }
+
+    pub fn get_data_response(&self, nonce: U64) -> Option<DataResponse> {
+        self.data_responses.get(&u64::from(nonce))
     }
 }
 
