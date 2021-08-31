@@ -126,7 +126,7 @@ impl RequestorContract {
             nonce: 0,
             data_requests: LookupMap::new(b"drq".to_vec()),
             data_responses: LookupMap::new(b"drs".to_vec()),
-            whitelist: UnorderedSet::new(b"".to_vec())
+            whitelist: UnorderedSet::new(b"w".to_vec())
         };
 
         // populate whitelist
