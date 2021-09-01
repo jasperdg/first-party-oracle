@@ -35,19 +35,19 @@ pub enum Outcome {
     Invalid
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum DataResponseStatus {
     Pending,
     Finalized(Outcome)
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize)]
 pub struct DataRequest {
     amount: WrappedBalance,
     payload: NewDataRequestArgs
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct DataResponse {
     status: DataResponseStatus,
     tags: Vec<String>
@@ -139,10 +139,7 @@ impl RequestorContract {
         requestor_instance
     }
 
-    /**
-     * @notice creates a new data request on the oracle (must be whitelisted on oracle first)
-     * @returns ID of data request
-     */
+    #[payable]
     pub fn create_data_request(
         &mut self,
         amount: WrappedBalance,
@@ -195,9 +192,6 @@ impl RequestorContract {
         );
     }
     
-    /**
-     * @notice called by oracle to finalize the outcome result of a data request
-     */
     #[payable]
     pub fn get_outcome(
         &mut self,
