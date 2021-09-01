@@ -11,5 +11,4 @@ near call v2.wnear.flux-dev near_deposit "{}" --accountId YOUR_TESTNET_ACCOUNT_I
 
 # Build and deploy your requestor-sample-contract
 cargo build --target wasm32-unknown-unknown --release
-cp ./target/wasm32-unknown-unknown/release/request_interface.wasm  ./res
-near deploy YOUR_TESTNET_ACCOUNT_ID ./res/request_interface.wasm new --initArgs '{"oracle": "05.oracle.flux-dev", "stake_token": "v2.wnear.flux-dev"}'
+near deploy YOUR_TESTNET_ACCOUNT_ID ./target/wasm32-unknown-unknown/release/request_interface.wasm new --initArgs '{"oracle": "05.oracle.flux-dev", "stake_token": "v2.wnear.flux-dev"}'
