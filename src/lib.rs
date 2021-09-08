@@ -61,7 +61,7 @@ pub struct DataResponse {
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 pub struct NewDataRequestArgs {
     pub sources: Vec<Source>,
-    pub tags: Vec<String>,
+    pub tags: Option<Vec<String>>,
     pub description: Option<String>,
     pub outcomes: Option<Vec<String>>,
     pub challenge_period: WrappedTimestamp,
@@ -152,12 +152,12 @@ impl RequestorContract {
     ) -> Promise {
         self.assert_whitelisted();
         let nonce = self.get_nonce();
-        if payload.tags.len() == 0 {
-            payload.tags = vec![nonce.to_string()];
-        }
-        else {
-            payload.tags.push(nonce.to_string());
-        }
+
+        // insert nonce into tags
+        let mut tags = payload.tags.unwrap_or(vec![]);
+        tags.push(nonce.to_string());
+        payload.tags = Some(tags);
+
         let dr = DataRequest{
             amount,
             payload: payload.clone()
@@ -292,7 +292,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -314,7 +318,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -336,7 +344,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -357,7 +369,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -380,7 +396,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: vec!["butt".to_owned(),"on".to_owned()],
+=======
+            tags: Some(vec!["butt".to_owned(),"on".to_owned()]),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -403,7 +423,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -413,7 +437,11 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
+<<<<<<< HEAD
             tags: Vec::new(),
+=======
+            tags: Some(Vec::new()),
+>>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
