@@ -60,7 +60,7 @@ pub struct DataResponse {
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
 pub struct NewDataRequestArgs {
-    pub sources: Vec<Source>,
+    pub sources: Option<Vec<Source>>,
     pub tags: Option<Vec<String>>,
     pub description: Option<String>,
     pub outcomes: Option<Vec<String>>,
@@ -288,7 +288,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -310,7 +310,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -332,7 +332,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -353,7 +353,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -376,7 +376,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -399,7 +399,7 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
@@ -409,7 +409,7 @@ mod tests {
         });
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Vec::new(),
+            sources: Some(Vec::new()),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
