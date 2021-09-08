@@ -21,6 +21,11 @@ pub enum AnswerType {
     String
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
+pub enum DataRequestDataType {
+    Number(U128),
+    String,
+}
 
 #[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct AnswerNumberType {
@@ -60,7 +65,7 @@ pub struct NewDataRequestArgs {
     pub description: Option<String>,
     pub outcomes: Option<Vec<String>>,
     pub challenge_period: WrappedTimestamp,
-    pub data_type: AnswerType,
+    pub data_type: DataRequestDataType,
     pub creator: AccountId,
 }
 
@@ -288,7 +293,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
     }
@@ -310,7 +315,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
     }
@@ -332,7 +337,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
     }
@@ -353,7 +358,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
 
@@ -376,7 +381,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: vec!["butt".to_owned(),"on".to_owned()],
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
 
@@ -399,7 +404,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
 
@@ -409,7 +414,7 @@ mod tests {
             challenge_period: U64(1500),
             description: Some("a".to_string()),
             tags: Vec::new(),
-            data_type: AnswerType::String,
+            data_type: DataRequestDataType::String,
             creator: alice(),
         });
 
