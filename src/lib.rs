@@ -292,11 +292,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -318,11 +314,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -344,11 +336,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -369,11 +357,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -396,11 +380,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: vec!["butt".to_owned(),"on".to_owned()],
-=======
             tags: Some(vec!["butt".to_owned(),"on".to_owned()]),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -423,11 +403,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -437,11 +413,7 @@ mod tests {
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-<<<<<<< HEAD
-            tags: Vec::new(),
-=======
             tags: Some(Vec::new()),
->>>>>>> c557b7a6fa3577df0a2ad428a66659d3d7fbe3a1
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
