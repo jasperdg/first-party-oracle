@@ -178,6 +178,7 @@ impl RequestorContract {
     #[payable]
     pub fn set_outcome(
         &mut self,
+        request_id: U64,
         requestor: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
