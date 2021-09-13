@@ -1,5 +1,7 @@
 env NEAR_ENV=testnet
 
+[[ -z "$1" ]] && echo "Expected syntax: $0 YOUR_TESTNET_ACCOUNT_ID" >&2 && exit 1
+
 TIME=`date +%s`
 END_TIME=`expr $TIME`
 BEGIN_TIME=`expr $END_TIME - 300`
