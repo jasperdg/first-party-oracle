@@ -44,7 +44,7 @@ pub fn fungible_token_transfer_call(token_account_id: AccountId, receiver_id: Ac
 }
 
 #[near_bindgen]
-impl RequestorContract {
+impl RequesterContract {
     pub fn request_ft_transfer(
         &self,
         token_id: AccountId,

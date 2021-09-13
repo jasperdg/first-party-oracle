@@ -81,7 +81,7 @@ pub type WrappedBalance = U128;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct RequestorContract {
+pub struct RequesterContract {
     pub oracle: AccountId,
     pub stake_token: AccountId,
     pub nonce: u64,
@@ -90,14 +90,14 @@ pub struct RequestorContract {
     pub whitelist: UnorderedSet<AccountId> // accounts allowed to call create_data_request(). if len() == 0, no whitelist (any account can make data request)
 }
 
-impl Default for RequestorContract {
+impl Default for RequesterContract {
     fn default() -> Self {
         env::panic(b"Contract should be initialized before usage")
     }
 }
 
 // Private methods
-impl RequestorContract {
+impl RequesterContract {
     pub fn assert_oracle(&self) {
         assert_eq!(&env::predecessor_account_id(), &self.oracle, "ERR_INVALID_ORACLE_ADDRESS");
     }
@@ -118,14 +118,14 @@ impl RequestorContract {
 }
 
 #[near_bindgen]
-impl RequestorContract {
+impl RequesterContract {
     #[init]
     pub fn new(
         oracle: AccountId,
         stake_token: AccountId,
         whitelist: Option<Vec<ValidAccountId>>,
     ) -> Self {
-        let mut requestor_instance = Self {
+        let mut requester_instance = Self {
             oracle,
             stake_token,
             nonce: 0,
@@ -137,11 +137,11 @@ impl RequestorContract {
         // populate whitelist
         if let Some(whitelist) = whitelist {
             for acct in whitelist {
-                requestor_instance.whitelist.insert(acct.as_ref());
+                requester_instance.whitelist.insert(acct.as_ref());
             }
         }
 
-        requestor_instance
+        requester_instance
     }
 
     #[payable]
@@ -172,19 +172,15 @@ impl RequestorContract {
         )
     }
 
-    /**
-     * @notice called by oracle to finalize the outcome result of a data request
-     */
     #[payable]
     pub fn set_outcome(
         &mut self,
-        request_id: U64,
-        requestor: AccountId,
+        requester: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
     ) {
         self.assert_oracle();
-        assert_eq!(env::current_account_id(), requestor, "can only set outcomes for requests that are initiated by this requestor");
+        assert_eq!(env::current_account_id(), requester, "can only set outcomes for requests that are initiated by this requester");
         assert_eq!(env::attached_deposit(), 1);
 
         // insert finalized data request outcome into this contract
@@ -266,7 +262,7 @@ mod tests {
     fn ri_not_oracle() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             None,
@@ -282,7 +278,7 @@ mod tests {
     fn ri_create_dr_success() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             None,
@@ -304,7 +300,7 @@ mod tests {
     fn ri_whitelisted_success() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()])
@@ -326,7 +322,7 @@ mod tests {
     fn ri_unwhitelisted_fail() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             Some(vec![serde_json::from_str("\"bob.near\"").unwrap()])
@@ -347,7 +343,7 @@ mod tests {
     fn ri_empty_tags_nonce_works() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()])
@@ -370,7 +366,7 @@ mod tests {
     fn ri_some_tags_nonce_works() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()])
@@ -393,7 +389,7 @@ mod tests {
     fn ri_nonce_iterates_properly() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = RequestorContract::new(
+        let mut contract = RequesterContract::new(
             oracle(),
             token(),
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()])
