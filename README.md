@@ -6,6 +6,19 @@ On the testnet deployment, anyone can test their own Request Contract with the t
 
 [Please visit the documentation](https://docs.fluxprotocol.org/docs/getting-started/data-requesters) for more information on getting set up as a data requester!
 
+## Building and deploying
+
+```bash
+REQUESTOR=myRequestor.account.testnet
+ACCOUNT=account.testnet
+
+sh build.sh
+
+bash scripts/deploy_requestor.sh --accountId $REQUESTOR
+
+bash scripts/reset_account.sh --master $ACCOUNT --account $REQUESTOR
+```
+
 ## Options
 
 ### Whitelist
