@@ -9,14 +9,18 @@ On the testnet deployment, anyone can test their own Request Contract with the t
 ## Building and deploying
 
 ```bash
-REQUESTOR=myRequestor.account.testnet
+# set vars
+REQUESTER=requester.account.testnet
 ACCOUNT=account.testnet
+
+# create requester account (or use `scripts/reset_account.sh`)
+NEAR_ENV=testnet near create-account $REQUESTER --masterAccount $ACCOUNT --initialBalance 5
 
 sh build.sh
 
-bash scripts/deploy_requestor.sh --accountId $REQUESTOR
+bash scripts/deploy_requester.sh --accountId $REQUESTER
 
-bash scripts/reset_account.sh --master $ACCOUNT --account $REQUESTOR
+bash scripts/reset_account.sh --master $ACCOUNT --account $REQUESTER
 ```
 
 ## Options
