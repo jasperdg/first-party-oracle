@@ -153,12 +153,12 @@ impl RequesterContract {
     #[payable]
     pub fn set_outcome(
         &mut self,
-        requestor: AccountId,
+        requester: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
     ) {
         self.assert_oracle();
-        assert_eq!(env::current_account_id(), requestor, "can only set outcomes for requests that are initiated by this requester");
+        assert_eq!(env::current_account_id(), requester, "can only set outcomes for requests that are initiated by this requester");
         assert_eq!(env::attached_deposit(), 1);
 
         // insert finalized data request outcome into this contract
