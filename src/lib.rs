@@ -1,3 +1,5 @@
+mod types;
+
 use near_sdk::{env, log, near_bindgen, AccountId, Balance, Promise};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{ Deserialize, Serialize };
@@ -5,6 +7,7 @@ use near_sdk::serde_json::json;
 use near_sdk::json_types::{U64, U128, ValidAccountId};
 use near_sdk::collections::{UnorderedSet, LookupMap};
 use fungible_token_handler::fungible_token_transfer_call;
+use types::{Outcome};
 
 mod fungible_token_handler;
 
@@ -14,11 +17,10 @@ pub struct Source {
     pub source_path: String
 }
 
-
-#[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub enum AnswerType {
-    Number(AnswerNumberType),
-    String
+#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub enum DataResponseStatus {
+    Pending,
+    Finalized(Outcome)
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
@@ -26,26 +28,6 @@ pub enum DataRequestDataType {
     Number(U128),
     String,
 }
-
-#[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct AnswerNumberType {
-    pub value: U128,
-    pub multiplier: U128,
-    pub negative: bool,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub enum Outcome {
-    Answer(AnswerType),
-    Invalid
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Clone, Deserialize, Serialize)]
-pub enum DataResponseStatus {
-    Pending,
-    Finalized(Outcome)
-}
-
 #[derive(BorshSerialize, BorshDeserialize, Deserialize, Serialize)]
 pub struct DataRequest {
     amount: WrappedBalance,
@@ -171,12 +153,12 @@ impl RequesterContract {
     #[payable]
     pub fn set_outcome(
         &mut self,
-        requester: AccountId,
+        requestor: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
     ) {
         self.assert_oracle();
-        assert_eq!(env::current_account_id(), requester, "can only set outcomes for requests that are initiated by this requester");
+        assert_eq!(env::current_account_id(), requestor, "can only set outcomes for requests that are initiated by this requester");
         assert_eq!(env::attached_deposit(), 1);
 
         // insert finalized data request outcome into this contract
