@@ -4,7 +4,7 @@ Interested in integrating with the Flux Oracle? **Requester Contracts** can be u
 
 On the testnet deployment, anyone can test their own Request Contract with the testnet oracle. When the Oracle is deployed to mainnet, each Requester will require a successful proposal and execution by the Flux DAO. Any protocol or user-deployed smart contract can experiment directly with the Flux Oracle as a data requester and put any kind of data on-chain to be resolved by our pool of testnet validators.
 
-[Please visit the documentation](https://docs.fluxprotocol.org/docs/getting-started/data-requesters) for more information on getting set up as a data requester!
+[Please visit the documentation](https://docs.fluxprotocol.org/docs/getting-started/data-requesters) for more information on getting set up as a data requester! Also see [flux-sdk-rs](https://github.com/fluxprotocol/flux-sdk-rs) for types used inside this contract.
 
 ## Building and deploying
 

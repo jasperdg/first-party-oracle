@@ -1,18 +1,14 @@
-mod types;
-
 use near_sdk::{env, log, near_bindgen, AccountId, Balance, Promise};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{ Deserialize, Serialize };
 use near_sdk::serde_json::json;
-use near_sdk::json_types::{U64, U128, ValidAccountId};
+use near_sdk::json_types::{U64, ValidAccountId};
 use near_sdk::collections::{UnorderedSet, LookupMap};
 use fungible_token_handler::fungible_token_transfer_call;
-use types::*;
+use flux_sdk::{RequestStatus, Nonce, DataRequest, WrappedBalance, NewDataRequestArgs, Outcome};
 
 mod fungible_token_handler;
 
 near_sdk::setup_alloc!();
-
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -133,6 +129,8 @@ mod tests {
     use near_sdk::MockedBlockchain;
     use near_sdk::serde_json;
     use near_sdk::{testing_env, VMContext};
+    use near_sdk::json_types::U128;
+    use flux_sdk::DataRequestDataType;
 
     fn alice() -> AccountId {
         "alice.near".to_string()
