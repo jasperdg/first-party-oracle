@@ -4,7 +4,11 @@ use near_sdk::serde_json::json;
 use near_sdk::json_types::{U64, ValidAccountId};
 use near_sdk::collections::{UnorderedSet, LookupMap};
 use fungible_token_handler::fungible_token_transfer_call;
-use flux_sdk::{RequestStatus, Nonce, DataRequest, WrappedBalance, NewDataRequestArgs, Outcome};
+use flux_sdk::requester::{ RequestStatus, DataRequestDetails };
+use flux_sdk::nonce::Nonce;
+use flux_sdk::data_request::NewDataRequestArgs;
+use flux_sdk::types::WrappedBalance;
+use flux_sdk::outcome::Outcome;
 
 mod fungible_token_handler;
 
@@ -16,7 +20,7 @@ pub struct RequesterContract {
     pub oracle: AccountId,
     pub stake_token: AccountId,
     pub nonce: Nonce,
-    pub data_requests: LookupMap<u64, DataRequest>,
+    pub data_requests: LookupMap<u64, DataRequestDetails>,
     pub whitelist: UnorderedSet<AccountId> // accounts allowed to call create_data_request(). if len() == 0, no whitelist (any account can make data request)
 }
 
@@ -79,12 +83,10 @@ impl RequesterContract {
         let request_id = self.nonce.get_and_incr();
 
         // insert request_id into tags
-        let mut payload = payload;
-        let mut tags = payload.tags.unwrap_or(vec![]);
+        let mut tags = payload.clone().tags;
         tags.push(request_id.to_string());
-        payload.tags = Some(tags.to_vec());
 
-        let dr = DataRequest{
+        let dr = DataRequestDetails {
             amount,
             payload: payload.clone(),
             tags: tags,
@@ -117,7 +119,7 @@ impl RequesterContract {
         self.data_requests.insert(&request_id, &request);
     }
 
-    pub fn get_data_request(&self, request_id: U64) -> Option<DataRequest> {
+    pub fn get_data_request(&self, request_id: U64) -> Option<DataRequestDetails> {
         self.data_requests.get(&u64::from(request_id))
     }
 }
@@ -130,7 +132,7 @@ mod tests {
     use near_sdk::serde_json;
     use near_sdk::{testing_env, VMContext};
     use near_sdk::json_types::U128;
-    use flux_sdk::DataRequestDataType;
+    use flux_sdk::data_request::DataRequestDataType;
 
     fn alice() -> AccountId {
         "alice.near".to_string()
@@ -193,11 +195,11 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -215,11 +217,11 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -237,11 +239,11 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -258,11 +260,11 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -281,11 +283,11 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(vec!["butt".to_owned(),"on".to_owned()]),
+            tags: vec!["butt".to_owned(),"on".to_owned()],
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
@@ -304,21 +306,21 @@ mod tests {
         );
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
 
         contract.create_data_request(U128(100), NewDataRequestArgs{
-            sources: Some(Vec::new()),
+            sources: Vec::new(),
             outcomes: Some(vec!["a".to_string()].to_vec()),
             challenge_period: U64(1500),
             description: Some("a".to_string()),
-            tags: Some(Vec::new()),
+            tags: Vec::new(),
             data_type: DataRequestDataType::String,
             creator: alice(),
         });
