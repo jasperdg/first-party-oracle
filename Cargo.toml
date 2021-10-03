@@ -1,7 +1,7 @@
 [package]
 name = "request-interface"
-version = "0.1.0"
-authors = ["Jameson Hodge <contact@jamesonhodge.com>"]
+version = "0.2.0"
+authors = ["Flux Contributors <contributors@flux.xyz>"]
 edition = "2018"
 
 [lib]
@@ -9,5 +9,5 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = { git = "https://github.com/near/near-sdk-rs.git", rev="249dacdcd3fd34bc00f0895a275f33f05cd910c1" }
-flux-sdk = { git = "https://github.com/fluxprotocol/flux-sdk-rs.git", rev="51be1043aacc76d0e333ee45314ecd6b1aed2992" }
+flux-sdk = { git = "https://github.com/fluxprotocol/flux-sdk-rs.git", rev="52d763d26bfe16263f17cdec5e4c9e09e532b6d5" }
 serde = "1.0.118"
