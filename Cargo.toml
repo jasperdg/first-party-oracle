@@ -8,6 +8,6 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-near-sdk = { git = "https://github.com/near/near-sdk-rs.git", rev="249dacdcd3fd34bc00f0895a275f33f05cd910c1" }
+near-sdk = "3.1.0"
 flux-sdk = { git = "https://github.com/fluxprotocol/flux-sdk-rs.git", rev="64e5e6e5e4202457f9f0789c1f0524c6a7c0aca2" }
 serde = "1.0.118"
