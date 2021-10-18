@@ -159,8 +159,8 @@ dependencies = [
 
 [[package]]
 name = "flux-sdk"
-version = "0.2.3"
-source = "git+https://github.com/fluxprotocol/flux-sdk-rs.git?rev=aadde819566bc5306e6f17a9e61cba3f895dfb90#aadde819566bc5306e6f17a9e61cba3f895dfb90"
+version = "0.2.4"
+source = "git+https://github.com/fluxprotocol/flux-sdk-rs.git?rev=433b3297eaac4600b8c8a8bb2673081480379511#433b3297eaac4600b8c8a8bb2673081480379511"
 dependencies = [
  "near-sdk",
  "serde",
@@ -473,7 +473,7 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "request-interface"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "flux-sdk",
  "near-sdk",

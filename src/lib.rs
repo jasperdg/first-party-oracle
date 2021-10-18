@@ -3,7 +3,7 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde_json::json;
 use near_sdk::json_types::{U64, ValidAccountId};
 use near_sdk::collections::{UnorderedSet, LookupMap};
-use fungible_token_handler::fungible_token_transfer_call;
+use fungible_token_handler::{fungible_token_transfer_call, fungible_token_transfer};
 use flux_sdk::{RequestStatus, Nonce, DataRequestDetails, WrappedBalance, NewDataRequestArgs,Outcome};
 
 mod fungible_token_handler;
@@ -88,7 +88,9 @@ impl RequesterContract {
             amount,
             payload: payload.clone(),
             tags: tags,
-            status: RequestStatus::Pending
+            status: RequestStatus::Pending,
+            creator: env::predecessor_account_id(),
+            has_withdrawn_validity_bond: false
         };
         self.data_requests.insert(&request_id, &dr);
         log!("storing data request under {}", request_id);
@@ -119,6 +121,22 @@ impl RequesterContract {
 
     pub fn get_data_request(&self, request_id: U64) -> Option<DataRequestDetails> {
         self.data_requests.get(&u64::from(request_id))
+    }
+
+    pub fn withdraw_validity_bond(&mut self, request_id: U64) -> Promise {
+        let request = self.data_requests.get(&u64::from(request_id)).unwrap();
+        // assert validity bond for this data request has not already been withdrawn
+        assert_eq!(request.has_withdrawn_validity_bond, false, "ERR_VALIDITY_BOND_ALREADY_WITHDRAWN"); 
+        // assert the caller created this data request
+        assert_eq!(env::predecessor_account_id(), request.creator, "can only withdraw bond for requests that are initiated by this requester");
+        // assert sure the data request is finalized
+        assert!(matches!(request.status, RequestStatus::Finalized(Outcome::Answer{..})));
+        log!("withdrawing validity bond for data request {} from creator {}", u64::from(request_id), request.creator);
+        fungible_token_transfer(
+            self.payment_token.clone(),
+            env::predecessor_account_id(),
+            request.amount.into()
+        )
     }
 }
 
