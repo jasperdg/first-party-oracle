@@ -7,10 +7,6 @@ use near_sdk::collections::{LookupMap, UnorderedSet};
 use near_sdk::json_types::{ValidAccountId, U64};
 use near_sdk::serde_json::json;
 use near_sdk::{env, log, near_bindgen, AccountId, Balance, Promise};
-use near_sdk::json_types::{U64, ValidAccountId};
-use near_sdk::collections::{UnorderedSet, LookupMap};
-use fungible_token_handler::{fungible_token_transfer_call, fungible_token_transfer};
-use flux_sdk::{RequestStatus, Nonce, DataRequestDetails, WrappedBalance, NewDataRequestArgs,Outcome};
 
 mod fungible_token_handler;
 
