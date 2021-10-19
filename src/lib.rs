@@ -108,7 +108,12 @@ impl RequesterContract {
     }
 
     #[payable]
-    pub fn set_outcome(&mut self, requestor: AccountId, outcome: Outcome, tags: Vec<String>) {
+    pub fn set_outcome(
+        &mut self,
+        requestor: AccountId,
+        outcome: Outcome,
+        tags: Vec<String>,
+    ) -> Promise {
         self.assert_oracle();
         assert_eq!(
             env::current_account_id(),
@@ -121,40 +126,17 @@ impl RequesterContract {
         let mut request = self.data_requests.get(&request_id).unwrap();
         request.status = RequestStatus::Finalized(outcome);
         self.data_requests.insert(&request_id, &request);
+        
+        // forward returned validity bond from requester to creator
+        fungible_token_transfer(
+            self.payment_token.clone(),
+            request.creator,
+            request.amount.into(),
+        )
     }
 
     pub fn get_data_request(&self, request_id: U64) -> Option<DataRequestDetails> {
         self.data_requests.get(&u64::from(request_id))
-    }
-
-    pub fn withdraw_validity_bond(&mut self, request_id: U64) -> Promise {
-        let request = self.data_requests.get(&u64::from(request_id)).unwrap();
-        // assert validity bond for this data request has not already been withdrawn
-        assert_eq!(
-            request.has_withdrawn_validity_bond, false,
-            "ERR_VALIDITY_BOND_ALREADY_WITHDRAWN"
-        );
-        // assert the caller created this data request
-        assert_eq!(
-            env::predecessor_account_id(),
-            request.creator,
-            "can only withdraw bond for requests that are initiated by this requester"
-        );
-        // assert sure the data request is finalized
-        assert!(matches!(
-            request.status,
-            RequestStatus::Finalized(Outcome::Answer { .. })
-        ));
-        log!(
-            "withdrawing validity bond for data request {} from creator {}",
-            u64::from(request_id),
-            request.creator
-        );
-        fungible_token_transfer(
-            self.payment_token.clone(),
-            env::predecessor_account_id(),
-            request.amount.into(),
-        )
     }
 }
 
