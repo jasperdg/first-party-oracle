@@ -30,18 +30,19 @@ impl Default for RequesterContract {
 
 // Private methods
 impl RequesterContract {
-    pub fn assert_oracle(&self) {
+    pub fn assert_caller(&self, expected_caller: &AccountId) {
         assert_eq!(
             &env::predecessor_account_id(),
-            &self.oracle,
-            "ERR_INVALID_ORACLE_ADDRESS"
+            expected_caller,
+            "This method can only be called by {}",
+            expected_caller
         );
     }
     // if whitelist is populated, make sure caller's account is included in it
-    pub fn assert_whitelisted(&self) {
+    pub fn assert_whitelisted(&self, expected_account: &AccountId) {
         if self.whitelist.len() > 0 {
             assert!(
-                self.whitelist.contains(&env::predecessor_account_id()),
+                self.whitelist.contains(expected_account),
                 "ERR_NOT_WHITELISTED"
             )
         }
@@ -78,9 +79,10 @@ impl RequesterContract {
     pub fn create_data_request(
         &mut self,
         amount: WrappedBalance,
+        creator: AccountId,
         payload: NewDataRequestArgs,
     ) -> Promise {
-        self.assert_whitelisted();
+        self.assert_caller(&self.payment_token);
         let request_id = self.nonce.get_and_incr();
 
         // insert request_id into tags
@@ -94,7 +96,7 @@ impl RequesterContract {
             payload: payload.clone(),
             tags: tags,
             status: RequestStatus::Pending,
-            creator: env::predecessor_account_id(),
+            creator,
             has_withdrawn_validity_bond: false,
         };
         self.data_requests.insert(&request_id, &dr);
@@ -114,7 +116,7 @@ impl RequesterContract {
         outcome: Outcome,
         tags: Vec<String>,
     ) {
-        self.assert_oracle();
+        self.assert_caller(&self.oracle);
         assert_eq!(
             env::current_account_id(),
             requestor,
@@ -149,6 +151,7 @@ mod tests {
     use near_sdk::serde_json;
     use near_sdk::MockedBlockchain;
     use near_sdk::{testing_env, VMContext};
+    use crate::fungible_token_handler::FungibleTokenReceiver;
 
     fn alice() -> AccountId {
         "alice.near".to_string()
@@ -167,7 +170,7 @@ mod tests {
             current_account_id: alice(),
             signer_account_id: alice(),
             signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: alice(),
+            predecessor_account_id: token(),
             input,
             block_index: 0,
             block_timestamp: 0,
@@ -184,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "ERR_INVALID_ORACLE_ADDRESS")]
+    #[should_panic(expected = "This method can only be called by oracle.near")]
     fn ri_not_oracle() {
         let context = get_context(vec![], false);
         testing_env!(context);
@@ -198,17 +201,14 @@ mod tests {
         testing_env!(context);
         let mut contract = RequesterContract::new(oracle(), token(), None);
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
     }
 
     #[test]
@@ -221,17 +221,14 @@ mod tests {
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()]),
         );
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
     }
 
     #[test]
@@ -245,17 +242,14 @@ mod tests {
             Some(vec![serde_json::from_str("\"bob.near\"").unwrap()]),
         );
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
     }
 
     #[test]
@@ -268,17 +262,14 @@ mod tests {
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()]),
         );
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
 
         assert!(contract.data_requests.get(&0).is_some());
     }
@@ -293,17 +284,14 @@ mod tests {
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()]),
         );
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: vec!["butt".to_owned(), "on".to_owned()],
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["butt".to_owned(), "on".to_owned()],
+            "data_type": DataRequestDataType::String,
+        }).to_string());
 
         assert!(contract.data_requests.get(&0).is_some());
     }
@@ -318,29 +306,23 @@ mod tests {
             Some(vec![serde_json::from_str("\"alice.near\"").unwrap()]),
         );
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
 
-        contract.create_data_request(
-            U128(100),
-            NewDataRequestArgs {
-                sources: Some(Vec::new()),
-                outcomes: Some(vec!["a".to_string()].to_vec()),
-                challenge_period: U64(1500),
-                description: Some("a".to_string()),
-                tags: Vec::new(),
-                data_type: DataRequestDataType::String,
-            },
-        );
+        contract.ft_on_transfer(alice(), U128(100), serde_json::json!({
+            "sources": Some(Vec::<String>::new()),
+            "outcomes": Some(vec!["a".to_string()].to_vec()),
+            "challenge_period": U64(1500),
+            "description": Some("a".to_string()),
+            "tags": vec!["a".to_string()].to_vec(),
+            "data_type": DataRequestDataType::String,
+        }).to_string());
 
         assert!(contract.data_requests.get(&1).is_some());
     }
