@@ -113,7 +113,7 @@ impl RequesterContract {
         requestor: AccountId,
         outcome: Outcome,
         tags: Vec<String>,
-    ) -> Promise {
+    ) {
         self.assert_oracle();
         assert_eq!(
             env::current_account_id(),
@@ -132,7 +132,7 @@ impl RequesterContract {
             self.payment_token.clone(),
             request.creator,
             request.amount.into(),
-        )
+        );
     }
 
     pub fn get_data_request(&self, request_id: U64) -> Option<DataRequestDetails> {
