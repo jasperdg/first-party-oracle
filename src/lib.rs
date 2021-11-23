@@ -7,8 +7,9 @@ near_sdk::setup_alloc!();
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct PriceEntry {
-    price: u128,      // Last reported price
-    last_update: u64, // Time or report
+    price: U128,                   // Last reported price
+    decimals: u16,                 // Amount of decimals (e.g. if 2, 100 = 1.00)
+    last_update: WrappedTimestamp, // Time or report
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -35,12 +36,12 @@ impl Provider {
         self.query_fee = fee
     }
 
-    pub fn set_price(&mut self, pair: String, price: u128) {
-        let new_entry = PriceEntry {
-            price,
-            last_update: env::block_timestamp(),
-        };
-        self.pairs.insert(&pair, &new_entry);
+    pub fn set_price(&mut self, pair: String, price: U128) {
+        let mut entry = self.pairs.get(&pair).expect("pair does not exist yet");
+        entry.last_update = env::block_timestamp().into();
+        entry.price = price;
+
+        self.pairs.insert(&pair, &entry);
     }
 }
 
@@ -78,26 +79,42 @@ impl RequesterContract {
         }
     }
 
-    pub fn push_data(&mut self, pair: String, price: U128) {
-        self.providers
+    pub fn create_pair(&mut self, pair: String, decimals: u16, initial_price: U128) {
+        let mut provider = self
+            .providers
             .get(&env::predecessor_account_id())
-            .unwrap_or(Provider::new())
-            .set_price(pair, price.into());
+            .unwrap_or(Provider::new());
+        assert!(provider.pairs.get(&pair).is_some(), "pair already exists");
+
+        provider.pairs.insert(
+            &pair,
+            &PriceEntry {
+                price: initial_price,
+                decimals,
+                last_update: env::block_timestamp().into(),
+            },
+        );
+
+        self.providers
+            .insert(&env::predecessor_account_id(), &provider);
     }
 
-    pub fn get_entry(
-        &self,
-        pair: String,
-        provider: AccountId,
-        min_last_update: WrappedTimestamp,
-    ) -> U128 {
-        let min_last_update: u64 = min_last_update.into();
-        let entry = self.get_provider_expect(&provider).get_entry_expect(&pair);
-        assert_eq!(
-            entry.last_update >= min_last_update,
-            "entry not updated recently enough"
-        );
-        entry.price.into()
+    pub fn pair_exists(&self, pair: String, provider: AccountId) -> bool {
+        self.get_provider_expect(&provider)
+            .pairs
+            .get(&pair)
+            .is_some()
+    }
+
+    pub fn push_data(&mut self, pair: String, price: U128) {
+        let mut provider = self.get_provider_expect(&env::predecessor_account_id());
+        provider.set_price(pair, price);
+        self.providers
+            .insert(&env::predecessor_account_id(), &provider);
+    }
+
+    pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
+        self.get_provider_expect(&provider).get_entry_expect(&pair)
     }
 
     pub fn aggregate_avg(
@@ -119,11 +136,11 @@ impl RequesterContract {
             let entry = provider.get_entry_expect(&pairs[i]);
 
             // If this entry was updated after the min_last_update take it out of the average
-            if entry.last_update < min_last_update {
+            if u64::from(entry.last_update) < min_last_update {
                 amount_of_providers -= 1;
                 return s;
             } else {
-                return s + entry.price;
+                return s + u128::from(entry.price);
             }
         });
 
@@ -153,10 +170,10 @@ impl RequesterContract {
                 let entry = provider.get_entry_expect(&pairs[i]);
 
                 // If this entry was updated after the min_last_update take it out of the average
-                if entry.last_update < min_last_update {
+                if u64::from(entry.last_update) < min_last_update {
                     return None;
                 } else {
-                    return Some(U128(entry.price));
+                    return Some(entry.price);
                 }
             })
             .collect()
