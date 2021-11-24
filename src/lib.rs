@@ -12,6 +12,17 @@ pub struct PriceEntry {
     last_update: WrappedTimestamp, // Time or report
 }
 
+// TODO: implement query results 
+// enum QueryResults {
+//     SingleEntry(PriceEntry),
+//     Avg(U128),
+//     Collection(Vec<Option<U128>>)
+// }
+
+// TODO: impl ft_transfer_call on each of the query functions
+// Flow Alice -> token(ft_transfer_call) -> Provider(get_entry) -> Receiver(set_price)
+// TODO: impl callback on ft_transfer_call that sets QueryResults on receiver
+
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Provider {
     pub query_fee: u128,
@@ -87,7 +98,7 @@ impl RequesterContract {
             .get(&env::predecessor_account_id())
             .unwrap_or(Provider::new());
 
-        assert!(provider.pairs.get(&pair).is_some(), "pair already exists");
+        assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
         provider.pairs.insert(
             &pair,
@@ -122,6 +133,7 @@ impl RequesterContract {
         
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
+
 
     pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
         self.get_provider_expect(&provider).get_entry_expect(&pair)
