@@ -1,9 +1,15 @@
 mod helpers;
+use flux_sdk::{
+    WrappedBalance
+};
+use fungible_token_handler::{fungible_token_transfer};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::{WrappedTimestamp, U128};
-use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault};
+use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Promise};
 near_sdk::setup_alloc!();
+
+mod fungible_token_handler;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct PriceEntry {
@@ -55,7 +61,9 @@ enum StorageKeys {
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct RequesterContract {
     pub oracle: AccountId,
+    pub payment_token: AccountId,
     pub providers: LookupMap<AccountId, Provider>, // maps:  AccountId => Provider
+    provider_balance: LookupMap<AccountId, u128>
 }
 
 // Private methods
@@ -67,15 +75,64 @@ impl RequesterContract {
             "ERR_INVALID_ORACLE_ADDRESS"
         );
     }
+    fn get_provider(&self, account_id: &AccountId) -> Provider {
+        self.providers
+            .get(account_id)
+            .expect("no provider with this account id")
+    }
+    pub fn assert_paying_price(&self, provider: AccountId, amount: u128) {
+        assert_eq!(
+            self.get_provider(&provider).query_fee,
+            amount,
+            "{} given, {} requires exactly {} per query",
+            amount,
+            provider,
+            self.get_provider(&provider).query_fee
+        );
+    }
+    pub fn assert_pair_exists(&self, provider: AccountId, pair: String) {
+        assert!(
+            self.get_provider(&provider)
+            .pairs
+            .get(&pair)
+            .is_some(),
+            "{} doesn't exist for {}",
+            pair,
+            provider
+        );
+    }
+    fn assert_has_balance(&self, provider: AccountId) {
+        assert!(self.provider_balance.get(&provider).is_some(), "you don't have any money");
+    }
+    fn add_balance(&self, provider: AccountId, amount: u128) {
+        match self.providers.get(&provider).is_some() {
+            True => {
+                let mut current_balance = self.provider_balance.get(&provider).unwrap();
+                current_balance = current_balance + amount;
+                self.provider_balance.insert(&provider, &current_balance);
+            }
+            False => {
+                self.provider_balance.insert(&provider, &amount);
+            }
+        }
+    }
+    fn withdraw_balance(&self, provider: AccountId) -> u128 {
+        self.assert_has_balance(provider);
+        let mut balance = self.provider_balance.get(&provider).unwrap();
+        self.provider_balance.remove(&provider);
+        balance
+    }
 }
 
 #[near_bindgen]
 impl RequesterContract {
     #[init]
-    pub fn new(oracle: AccountId) -> Self {
+    pub fn new(oracle: AccountId, payment_token: AccountId) -> Self {
         Self {
             oracle,
+            payment_token,
             providers: LookupMap::new(StorageKeys::Providers),
+            provider_balance: LookupMap::new(b"pb".to_vec())
         }
     }
 
@@ -86,7 +143,7 @@ impl RequesterContract {
             .providers
             .get(&env::predecessor_account_id())
             .unwrap_or(Provider::new());
-
+        // TODO test whether this actually creates the new provider 
         assert!(provider.pairs.get(&pair).is_some(), "pair already exists");
 
         provider.pairs.insert(
@@ -104,8 +161,12 @@ impl RequesterContract {
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
-    pub fn pair_exists(&self, pair: String, provider: AccountId) -> bool {
-        self.get_provider_expect(&provider)
+    fn get_provider_expect(&self, account_id: &AccountId) -> Provider {
+        self.get_provider(account_id)
+    }
+
+    pub fn get_pair_exists(&self, pair: String, provider: AccountId) -> bool {
+        self.get_provider(&provider)
             .pairs
             .get(&pair)
             .is_some()
@@ -123,16 +184,35 @@ impl RequesterContract {
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
-    pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
+    // TODO may need to implement promiseorvalue chain: get entry -> add_balance -> return data
+    #[payable]
+    pub fn get_entry(&mut self, pair: String, provider: AccountId) -> PriceEntry {
+        self.assert_pair_exists(provider, pair);
+        self.assert_paying_price(provider, env::attached_deposit());
+        self.add_balance(provider, env::attached_deposit());
         self.get_provider_expect(&provider).get_entry_expect(&pair)
+        // TODO make sure provider pair has RECENT data in it 
     }
 
+    // CLAIM FUNCTION FOR PROVIDER TO RECEIVE TOKENS FROM THIS CONTRACT
+    pub fn claim_earnings(&mut self) -> Promise {
+        fungible_token_transfer(self.payment_token, env::predecessor_account_id(), self.withdraw_balance(env::predecessor_account_id()))
+    }
+
+    // pay for queries
+    #[payable]
     pub fn aggregate_avg(
-        &self,
+        &mut self,
         pairs: Vec<String>,
         providers: Vec<AccountId>,
         min_last_update: WrappedTimestamp,
     ) -> U128 {
+        
+        // TODO: check if all pairs exist, and if paid amount enough to cover all providers,
+        //          or tell user how much they need to send, and return money
+        // add balance to each provider
+        // perform aggregation and return value
+
         assert_eq!(
             pairs.len(),
             providers.len(),
@@ -157,12 +237,20 @@ impl RequesterContract {
         U128(cum / amount_of_providers as u128)
     }
 
+    // pay for queries
+    #[payable]
     pub fn aggregate_collect(
-        &self,
+        &mut self,
         pairs: Vec<String>,
         providers: Vec<AccountId>,
         min_last_update: WrappedTimestamp,
     ) -> Vec<Option<U128>> {
+
+        // TODO: check if all pairs exist, and if paid amount enough to cover all providers,
+        //          or tell user how much they need to send, and return money
+        // add balance to each provider
+        // perform aggregation and return value
+
         assert_eq!(
             pairs.len(),
             providers.len(),
@@ -187,12 +275,6 @@ impl RequesterContract {
                 }
             })
             .collect()
-    }
-
-    fn get_provider_expect(&self, account_id: &AccountId) -> Provider {
-        self.providers
-            .get(account_id)
-            .expect("no provider with this account id")
     }
 }
 
