@@ -3,7 +3,7 @@ use fungible_token_handler::{fungible_token_transfer};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::serde::{Serialize, Deserialize};
-use near_sdk::json_types::{WrappedTimestamp, U128};
+use near_sdk::json_types::{WrappedTimestamp, U128, U64};
 use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Promise};
 near_sdk::setup_alloc!();
 
@@ -90,16 +90,20 @@ impl RequesterContract {
             .get(account_id)
             .expect("no provider with this account id")
     }
-    pub fn assert_paying_price(&self, provider: AccountId, amount: u128) {
-        assert_eq!(
-            self.get_provider(&provider).query_fee,
-            amount,
-            "{} given, {} requires exactly {} per query",
-            amount,
-            provider,
-            self.get_provider(&provider).query_fee
-        );
+    pub fn assert_paying_price(&self, providers: Vec<AccountId>, amount: u128) {
+        let mut balance_left = amount;
+        for provider in providers.iter() {
+            assert!(
+                balance_left >= self.get_provider(&provider).query_fee,
+                "Not enough deposit for this query, {} needs {} when {} left",
+                provider,
+                self.get_provider(&provider).query_fee,
+                balance_left
+            );
+            balance_left -= amount;
+        }
     }
+    // TODO: make a query to take all providers and tell user how much deposit is required to make query
     pub fn assert_pair_exists(&self, provider: AccountId, pair: String) {
         assert!(
             self.get_provider(&provider)
@@ -114,8 +118,10 @@ impl RequesterContract {
     fn assert_has_balance(&self, provider: AccountId) {
         assert!(self.providers.get(&provider).unwrap().balance > 0, "you don't have any money");
     }
-    fn add_balance(&mut self, provider: AccountId, amount: u128) {
-        self.providers.get(&provider).unwrap().add_balance(amount);
+    fn add_balance(&mut self, provider: &AccountId, amount: u128) -> u128 {
+        let mut excess = amount - self.providers.get(provider).unwrap().query_fee;
+        self.providers.get(provider).unwrap().add_balance(amount);
+        excess
     }
     fn withdraw_balance(&mut self, provider: AccountId) -> u128 {
         self.providers.get(&provider).unwrap().withdraw_balance()
@@ -136,13 +142,16 @@ impl RequesterContract {
     #[payable]
     pub fn create_pair(&mut self, pair: String, decimals: u16, initial_price: U128) {
         let initial_storage_usage = env::storage_usage();
+        // TODO see if user and pair exists
+        // create provider if doesn't exist
+        // create pair if doesn't exist
         let mut provider = self
             .providers
             .get(&env::predecessor_account_id())
             .unwrap_or(Provider::new());
             
         // TODO test whether this actually creates the new provider 
-        assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
+        // assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
         provider.pairs.insert(
             &pair,
@@ -186,13 +195,16 @@ impl RequesterContract {
     #[payable]
     pub fn get_entry(&mut self, pair: String, provider: AccountId) -> PriceEntry {
         self.assert_pair_exists(provider.clone(), pair.clone());
-        self.assert_paying_price(provider.clone(), env::attached_deposit());
-        self.add_balance(provider.clone(), env::attached_deposit());
+        self.assert_paying_price(vec![provider.clone()], env::attached_deposit());
+        self.add_balance(&provider, env::attached_deposit());
+        // let excess = self.add_balance(&provider, env::attached_deposit());
+        // if excess > 0 {
+            
+        // }
         self.providers.get(&provider).unwrap().get_entry_expect(&pair)
         // TODO make sure provider pair has RECENT data in it 
     }
 
-    // CLAIM FUNCTION FOR PROVIDER TO RECEIVE TOKENS FROM THIS CONTRACT
     pub fn claim_earnings(&mut self) -> Promise {
         fungible_token_transfer(self.payment_token.clone(), env::predecessor_account_id(), self.withdraw_balance(env::predecessor_account_id()))
     }
@@ -210,7 +222,7 @@ impl RequesterContract {
         pairs: Vec<String>,
         providers: Vec<AccountId>,
         min_last_update: WrappedTimestamp,
-    ) -> U128 {
+    ) -> PriceEntry {
         
         // TODO: check if all pairs exist, and if paid amount enough to cover all providers,
         //          or tell user how much they need to send, and return money
@@ -222,23 +234,28 @@ impl RequesterContract {
             providers.len(),
             "pairs and provider should be of equal length"
         );
+        self.assert_paying_price(providers.clone(), env::attached_deposit());
         let min_last_update: u64 = min_last_update.into();
         let mut amount_of_providers = providers.len();
 
         let cum = pairs.iter().enumerate().fold(0, |s, (i, account_id)| {
             let provider = self.get_provider(&account_id);
             let entry = provider.get_entry_expect(&pairs[i]);
-
+            self.add_balance(account_id, self.get_provider(&account_id).query_fee);
+            // TODO return fee if last_update not recent enough
             // If this entry was updated after the min_last_update take it out of the average
             if u64::from(entry.last_update) < min_last_update {
                 amount_of_providers -= 1;
                 return s;
             } else {
-                return s + u128::from(entry.price);
+                return s + u128::from(entry.price) / (10 * u128::from(entry.decimals));
             }
         });
-
-        U128(cum / amount_of_providers as u128)
+        PriceEntry {
+            price: U128(cum / amount_of_providers as u128),
+            decimals: 0,
+            last_update: U64(min_last_update)
+        }
     }
 
     // pay for queries
@@ -248,7 +265,7 @@ impl RequesterContract {
         pairs: Vec<String>,
         providers: Vec<AccountId>,
         min_last_update: WrappedTimestamp,
-    ) -> Vec<Option<U128>> {
+    ) -> Vec<Option<PriceEntry>> {
 
         // TODO: check if all pairs exist, and if paid amount enough to cover all providers,
         //          or tell user how much they need to send, and return money
@@ -260,6 +277,7 @@ impl RequesterContract {
             providers.len(),
             "pairs and provider should be of equal length"
         );
+        self.assert_paying_price(providers.clone(), env::attached_deposit());
         let min_last_update: u64 = min_last_update.into();
         pairs
             .iter()
@@ -270,12 +288,13 @@ impl RequesterContract {
                     .get(&account_id)
                     .expect("no provider with account id");
                 let entry = provider.get_entry_expect(&pairs[i]);
-
+                self.add_balance(account_id, self.get_provider(&account_id).query_fee);
+                // TODO allow user to insert more deposit and have them claim it later
                 // If this entry was updated after the min_last_update take it out of the average
                 if u64::from(entry.last_update) < min_last_update {
                     return None;
                 } else {
-                    return Some(entry.price);
+                    return Some(entry);
                 }
             })
             .collect()
@@ -367,7 +386,7 @@ mod tests {
 
     #[test]
     fn user_requests_pair_properly() {
-        let context = get_context(vec![], false, alice(), 1690000000000000000000);
+        let context = get_context(vec![], false, alice(), 9000000000000000000000);
         testing_env!(context);
         let mut contract = RequesterContract::new(alice(), token());
         contract.create_pair("ETHUSD".to_owned(), 2, U128(400000));
@@ -397,7 +416,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "no provider with this account id")]
-    fn user_requests_existent_pair_from_other_provider() {
+    fn user_requests_existing_pair_from_other_provider() {
         let context = get_context(vec![], false, alice(), 1690000000000000000000);
         testing_env!(context);
         let mut contract = RequesterContract::new(alice(), token());
@@ -406,5 +425,24 @@ mod tests {
         let context = get_context(vec![], false, gustavo(), 1);
         testing_env!(context);
         let entry = contract.get_entry("ETHUSD".to_owned(), gustavo());
+        // TODO compare entry
+    }
+
+    #[test]
+    fn user_requests_existing_aggregate_avg() {
+        let context = get_context(vec![], false, alice(), 1690000000000000000000);
+        testing_env!(context);
+        let mut contract = RequesterContract::new(alice(), token());
+        contract.create_pair("ETHUSD".to_owned(), 2, U128(400000));
+        contract.set_fee(U128(1));
+
+        let context = get_context(vec![], false, gustavo(), 1690000000000000000000);
+        testing_env!(context);
+        contract.create_pair("ETHUSD".to_owned(), 2, U128(400100));
+        contract.set_fee(U128(1));
+        // assert!(contract.get_provider(&gustavo()).pairs.get(&"ETHUSD".to_string()).is_some());
+
+        // let entry = contract.aggregate_avg(vec!["ETHUSD".to_owned(),"ETHUSD".to_owned()], vec![alice(), gustavo()], U64(env::block_timestamp()));
+        // assert_eq!(entry.price, U128(400050))
     }
 }
