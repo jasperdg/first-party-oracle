@@ -1,3 +1,5 @@
+initialize function for sim tests probably needs to interact with token contract
+
 oracle creation
 provider creation
 pair creation

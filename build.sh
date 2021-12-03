@@ -8,3 +8,4 @@ if [ ! -d ./res ]; then
 fi
 
 cp ./target/wasm32-unknown-unknown/release/request_interface.wasm ./res
+cp ./target/wasm32-unknown-unknown/release/token.wasm ./res
