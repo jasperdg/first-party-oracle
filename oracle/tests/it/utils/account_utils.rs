@@ -40,40 +40,66 @@ impl TestAccount {
         }
     }
 
-    /*** Getters ***/
-    pub fn get_token_balance(&self, account_id: Option<String>) -> u128 {
-        let account_id = match account_id {
-            Some(account_id) => account_id,
-            None => self.account.account_id(),
-        };
-
-        let res: U128 = self
-            .account
-            .view(
-                TOKEN_CONTRACT_ID.to_string(),
-                "ft_balance_of",
-                json!({ "account_id": account_id }).to_string().as_bytes(),
-            )
-            .unwrap_json();
-
-        res.into()
-    }
-
     /*** Setters ***/
-    pub fn claim(&self, dr_id: u64) -> ExecutionResult {
+    pub fn claim_earnings(&self) -> ExecutionResult {
         let res = self.account.call(
             ORACLE_CONTRACT_ID.to_string(),
-            "dr_claim",
+            "claim_earnings",
+            &[],
+            MAX_GAS,
+            1000000000000000000000,
+        );
+        res.assert_success();
+        res
+    }
+
+    pub fn create_pair(&self, pair: String, decimals: u16, initial_price: U128) -> ExecutionResult {
+        let res = self.account.call(
+            ORACLE_CONTRACT_ID.to_string(),
+            "create_pair",
             json!({
-                "account_id": self.account.account_id(),
-                "request_id": U64(dr_id)
+                "pair": pair,
+                "decimals": decimals,
+                "initial_price": initial_price
             })
             .to_string()
             .as_bytes(),
             MAX_GAS,
             1000000000000000000000,
         );
+        res.assert_success();
+        res
+    }
 
+    pub fn push_data(&self, pair: String, price: U128) -> ExecutionResult {
+        let res = self.account.call(
+            ORACLE_CONTRACT_ID.to_string(),
+            "push_data",
+            json!({
+                "pair": pair,
+                "price": price
+            })
+            .to_string()
+            .as_bytes(),
+            MAX_GAS,
+            1000000000000000000000,
+        );
+        res.assert_success();
+        res
+    }
+
+    pub fn set_fee(&self, fee: U128) -> ExecutionResult {
+        let res = self.account.call(
+            ORACLE_CONTRACT_ID.to_string(),
+            "set_fee",
+            json!({
+                "fee": fee
+            })
+            .to_string()
+            .as_bytes(),
+            MAX_GAS,
+            1000000000000000000000,
+        );
         res.assert_success();
         res
     }
@@ -116,5 +142,66 @@ impl TestAccount {
         res
     }
 
-    // TODO add other functions you need to use repeatedly
+     /*** Getters ***/
+     pub fn get_token_balance(&self, account_id: Option<String>) -> u128 {
+        let account_id = match account_id {
+            Some(account_id) => account_id,
+            None => self.account.account_id(),
+        };
+
+        let res: U128 = self
+            .account
+            .view(
+                TOKEN_CONTRACT_ID.to_string(),
+                "ft_balance_of",
+                json!({ "account_id": account_id }).to_string().as_bytes(),
+            )
+            .unwrap_json();
+
+        res.into()
+    }
+
+    pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
+        let res: PriceEntry = self.account.view(
+            ORACLE_CONTRACT_ID.to_string(),
+            "get_entry",
+            json!({
+                "pair": pair,
+                "provider": provider
+            })
+            .to_string()
+            .as_bytes()
+        ).unwrap_json();
+        res.into()
+    }
+
+    pub fn aggregate_avg(&self, pairs: Vec<String>, providers: Vec<AccountId>, min_last_update: WrappedTimestamp) -> PriceEntry {
+        let res: PriceEntry = self.account.view(
+            ORACLE_CONTRACT_ID.to_string(),
+            "aggregate_avg",
+            json!({
+                "pairs": pairs,
+                "providers": providers,
+                "min_last_update": min_last_update
+            })
+            .to_string()
+            .as_bytes()
+        ).unwrap_json();
+        res.into()
+    }
+
+    pub fn aggregate_call(&self, pairs: Vec<String>, providers: Vec<AccountId>, min_last_update: WrappedTimestamp) -> PriceEntry {
+        let res: PriceEntry = self.account.view(
+            ORACLE_CONTRACT_ID.to_string(),
+            "aggregate_call",
+            json!({
+                "pairs": pairs,
+                "providers": providers,
+                "min_last_update": min_last_update
+            })
+            .to_string()
+            .as_bytes()
+        ).unwrap_json();
+        res.into()
+    }
 }

@@ -1,4 +1,7 @@
-initialize function for sim tests probably needs to interact with token contract
+Set up contract such that providers and requesters treated essentially the same
+Users have to deposit money into contract in order to get outcomes
+get entry will be view method, will return if user has deposited sufficient amount
+else get entry will return nothing
 
 oracle creation
 provider creation

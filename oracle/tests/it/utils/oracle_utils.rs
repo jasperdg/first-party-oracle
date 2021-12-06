@@ -1,6 +1,6 @@
 use crate::utils::*;
 pub struct OracleUtils {
-    pub contract: ContractAccount<RequesterContractContract>,
+    pub contract: ContractAccount<FirstPartyOracleContract>,
 }
 
 impl OracleUtils {
@@ -8,7 +8,7 @@ impl OracleUtils {
         // deploy token
         let contract = deploy!(
             // Contract Proxy
-            contract: RequesterContractContract,
+            contract: FirstPartyOracleContract,
             // Contract account id
             contract_id: ORACLE_CONTRACT_ID,
             // Bytes of contract

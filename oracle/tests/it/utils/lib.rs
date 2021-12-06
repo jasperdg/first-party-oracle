@@ -3,6 +3,7 @@ use near_sdk::{
   json_types::{
       U128,
       U64,
+      WrappedTimestamp
   },
   serde_json::json,
   AccountId,
@@ -19,15 +20,16 @@ mod token_utils;
 extern crate oracle;
 use deposit::*;
 use account_utils::*;
+pub use oracle::*;
 use token;
 
-use oracle::RequesterContractContract;
+use oracle::FirstPartyOracleContract;
 
 const TOKEN_CONTRACT_ID: &str = "token";
-const ORACLE_CONTRACT_ID: &str = "oracle";
+pub const ORACLE_CONTRACT_ID: &str = "oracle";
 pub const SAFE_STORAGE_AMOUNT: u128 = 1250000000000000000000;
 
-type OracleContract = oracle::RequesterContractContract;
+type OracleContract = oracle::FirstPartyOracleContract;
 type TokenContract = token::TokenContractContract;
 
 
