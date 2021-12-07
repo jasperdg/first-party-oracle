@@ -3,7 +3,7 @@ use crate::utils::*;
 // Scenario: Bob creates pair, and Alice requests it
 #[test]
 fn dr_scenario_1() {
-    // let init_res = TestUtils::init();
+    let init_res = TestUtils::init();
     // let init_balance_alice = init_res.alice.get_token_balance(None);
     // let init_balance_bob = init_res.bob.get_token_balance(None);
     // println!(

@@ -19,12 +19,12 @@ impl TestAccount {
                     account_id.expect("expected account id").to_string(),
                     init_balance(),
                 );
-                storage_deposit(
-                    TOKEN_CONTRACT_ID,
-                    &master_account,
-                    SAFE_STORAGE_AMOUNT,
-                    Some(account.account_id()),
-                );
+                // storage_deposit(
+                //     TOKEN_CONTRACT_ID,
+                //     &master_account,
+                //     SAFE_STORAGE_AMOUNT,
+                //     Some(account.account_id()),
+                // );
                 storage_deposit(
                     ORACLE_CONTRACT_ID,
                     &master_account,
