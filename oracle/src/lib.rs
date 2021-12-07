@@ -1,4 +1,3 @@
-mod helpers;
 use fungible_token_handler::{fungible_token_transfer};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -7,11 +6,13 @@ use near_sdk::json_types::{WrappedTimestamp, U128, U64};
 use near_sdk::{env, near_bindgen, ext_contract, AccountId, BorshStorageKey, PanicOnDefault, Promise};
 near_sdk::setup_alloc!();
 
+mod helpers;
 mod fungible_token_handler;
 
+// providers, pairs, entries will always use vectors of same length
 #[ext_contract]
 trait RequesterContract {
-    fn set_outcome(pair: String, price: U128);
+    fn set_outcomes(providers: Vec<AccountId>, pairs: Vec<String>, entries: PriceEntry);
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
@@ -80,13 +81,13 @@ pub struct FirstPartyOracle {
 
 // Private methods
 impl FirstPartyOracle {
-    pub fn assert_oracle(&self) {
-        assert_eq!(
-            &env::predecessor_account_id(),
-            &self.oracle,
-            "ERR_INVALID_ORACLE_ADDRESS"
-        );
-    }
+    // pub fn assert_oracle(&self) {
+    //     assert_eq!(
+    //         &env::predecessor_account_id(),
+    //         &self.oracle,
+    //         "ERR_INVALID_ORACLE_ADDRESS"
+    //     );
+    // }
     pub fn assert_user_exists(&self, user: AccountId) {
         assert!(self.users.get(&user).is_some());
     }
@@ -213,6 +214,7 @@ impl FirstPartyOracle {
 
     // TODO make optional return
     // TODO SET OUTCOME ON REQUESTER 
+    #[payable]
     pub fn get_entry(&mut self, pair: String, user: AccountId) -> PriceEntry {
         self.assert_pair_exists(user.clone(), pair.clone());
         self.assert_paying_price(vec![user.clone()], env::attached_deposit());
@@ -232,6 +234,7 @@ impl FirstPartyOracle {
     }
 
     // TODO make optional return
+    #[payable]
     pub fn aggregate_avg(
         &mut self,
         pairs: Vec<String>,
@@ -274,6 +277,7 @@ impl FirstPartyOracle {
     }
 
     // TODO make optional return
+    #[payable]
     pub fn aggregate_collect(
         &mut self,
         pairs: Vec<String>,

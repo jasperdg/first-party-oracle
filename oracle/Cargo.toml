@@ -16,7 +16,8 @@ flux-sdk = { git = "https://github.com/fluxprotocol/flux-sdk-rs.git", rev="4eb01
 [dev-dependencies]
 near-sdk = "3.1.0"
 near-sdk-sim = "3.1.0"
-near-contract-standards = "3.1.0"
+near-contract-standards = "3.1.0" 
 serde = "1.0.118"
 token = { path = "./../token" }
+requester = { path = "./../requester" }
 flux-sdk = { git = "https://github.com/fluxprotocol/flux-sdk-rs.git", rev="4eb0111e6d24a984aeb3e4a2de2fc9feb8a3482c" }

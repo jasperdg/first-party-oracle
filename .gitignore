@@ -4,3 +4,4 @@ scripts/mybuild.sh
 scripts/validator.sh
 scripts/myvalidator.sh
 scripts/deploy.sh
+oracle/notes.txt

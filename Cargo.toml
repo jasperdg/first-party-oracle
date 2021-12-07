@@ -10,5 +10,6 @@ overflow-checks = true
 [workspace]
 members = [
   "oracle",
-  "token"
+  "token",
+  "requester"
 ]
