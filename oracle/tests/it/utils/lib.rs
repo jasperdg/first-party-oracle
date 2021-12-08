@@ -5,7 +5,7 @@ use near_sdk::{
       WrappedTimestamp
   },
   serde_json::json,
-  AccountId,
+  AccountId
 };
 use near_sdk_sim::{
     deploy, init_simulator, to_yocto, call, view,
@@ -24,7 +24,7 @@ pub use oracle::*;
 use requester;
 use token;
 
-use oracle::FirstPartyOracleContract;
+// use oracle::FirstPartyOracleContract;
 
 const TOKEN_CONTRACT_ID: &str = "token";
 pub const ORACLE_CONTRACT_ID: &str = "oracle";
@@ -57,10 +57,8 @@ impl TestUtils {
   pub fn init() -> Self {
     let master_account = TestAccount::new(None, None);
     let token_init_res = token_utils::TokenUtils::new(&master_account); // Init token
+    let oracle_init_res = oracle_utils::OracleUtils::new(&master_account); 
     let requester_init_res = requester_utils::RequesterUtils::new(&master_account);
-    let oracle_init_res = oracle_utils::OracleUtils::new(
-      &master_account
-    ); 
     Self {
         alice: TestAccount::new(Some(&master_account.account), Some("alice")),
         bob: TestAccount::new(Some(&master_account.account), Some("bob")),

@@ -4,10 +4,16 @@ use near_sdk::collections::LookupMap;
 use near_sdk::serde::{Serialize, Deserialize};
 use near_sdk::json_types::{WrappedTimestamp, U128, U64};
 use near_sdk::{env, near_bindgen, ext_contract, AccountId, BorshStorageKey, PanicOnDefault, Promise};
+use storage_manager::AccountStorageBalance;
+// use near_contract_standards::fungible_token::FungibleToken;
 near_sdk::setup_alloc!();
+
+// TODO replace all fungible token logic with built in standards implementation
+// near_contract_standards::impl_fungible_token_core!(FirstPartyOracle, token, on_tokens_burned);
 
 mod helpers;
 mod fungible_token_handler;
+mod storage_manager;
 
 // providers, pairs, entries will always use vectors of same length
 #[ext_contract]
@@ -26,7 +32,7 @@ pub struct PriceEntry {
 pub struct User {
     pub query_fee: u128,
     pub pairs: LookupMap<String, PriceEntry>, // Maps "{TICKER_1}/{TICKER_2}" => PriceEntry - e.g.: ETHUSD => PriceEntry
-    pub balance: u128
+    pub balance: AccountStorageBalance
 }
 
 impl User {
@@ -34,7 +40,10 @@ impl User {
         Self {
             query_fee: 0,
             pairs: LookupMap::new(StorageKeys::User),
-            balance: 0
+            balance: AccountStorageBalance {
+                total: 0,
+                available: 0
+            }
         }
     }
 
@@ -43,11 +52,12 @@ impl User {
             .get(pair)
             .expect("no price available for this pair")
     }
-
+    pub fn get_balance(&self) -> AccountStorageBalance {
+        self.balance
+    }
     pub fn set_fee(&mut self, fee: u128) {
         self.query_fee = fee
     }
-
     pub fn set_price(&mut self, pair: String, price: U128) {
         let mut entry = self.pairs.get(&pair).expect("pair does not exist yet");
         entry.last_update = env::block_timestamp().into();
@@ -56,12 +66,28 @@ impl User {
         self.pairs.insert(&pair, &entry);
     }
     fn add_balance(&mut self, amount: u128) {
-        self.balance = self.balance + amount;
+        self.balance.available += amount;
+        self.balance.total += amount;
     }
-    fn withdraw_balance(&mut self) -> u128 {
-        let withdrawal = self.balance;
-        self.balance = 0;
-        withdrawal
+    fn set_available_balance(&mut self, balance: u128) {
+        self.balance.available = balance;
+    }
+    fn withdraw_balance(&mut self, amount: Option<u128>) -> u128 {
+        match amount {
+            Some(i) => {
+                assert!(self.balance.available >= i,
+                    "Not enough storage available");
+                self.balance.total -= i;
+                self.balance.available -= i;
+                i
+            },
+            None => {
+                self.balance.total -= self.balance.available;
+                let withdrawal = self.balance.available;
+                self.balance.available = 0;
+                withdrawal
+            }
+        }
     }
 }
 
@@ -130,7 +156,7 @@ impl FirstPartyOracle {
         excess
     }
     fn withdraw_balance(&mut self, user: AccountId) -> u128 {
-        self.users.get(&user).unwrap().withdraw_balance()
+        self.users.get(&user).unwrap().withdraw_balance(None)
     }
 }
 
@@ -222,8 +248,9 @@ impl FirstPartyOracle {
         self.users.get(&user).unwrap().get_entry_expect(&pair)
         // TODO make sure user pair has RECENT data in it 
     }
-
+    // TODO see if flow of methods makes sense and secure
     pub fn claim_earnings(&mut self) -> Promise {
+        // TODO see if this withdraws and executes transfer atomically
         fungible_token_transfer(self.payment_token.clone(), env::predecessor_account_id(), self.withdraw_balance(env::predecessor_account_id()))
     }
 

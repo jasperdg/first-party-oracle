@@ -1,7 +1,6 @@
 use crate::utils::*;
 use flux_sdk::{
     consts::MAX_GAS,
-    data_request::{DataRequestDataType, NewDataRequestArgs},
 };
 pub fn init_balance() -> u128 {
     to_yocto("100000")
@@ -19,12 +18,12 @@ impl TestAccount {
                     account_id.expect("expected account id").to_string(),
                     init_balance(),
                 );
-                // storage_deposit(
-                //     TOKEN_CONTRACT_ID,
-                //     &master_account,
-                //     SAFE_STORAGE_AMOUNT,
-                //     Some(account.account_id()),
-                // );
+                storage_deposit(
+                    TOKEN_CONTRACT_ID,
+                    &master_account,
+                    SAFE_STORAGE_AMOUNT,
+                    Some(account.account_id()),
+                );
                 storage_deposit(
                     ORACLE_CONTRACT_ID,
                     &master_account,
