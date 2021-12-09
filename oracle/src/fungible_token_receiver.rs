@@ -24,7 +24,7 @@ pub enum Payload {
 }
 
 #[near_bindgen]
-impl FungibleTokenReceiver for Contract {
+impl FungibleTokenReceiver for FirstPartyOracle {
     // @returns amount of unused tokens
     fn ft_on_transfer(
         &mut self,

@@ -1,6 +1,6 @@
 use super::*;
 use near_sdk::json_types::{ValidAccountId, U128};
-use near_sdk::serde::Serialize;
+// use near_sdk::serde::Serialize;
 use near_sdk::{Promise, Balance};
 use std::marker::Copy;
 use std::clone::Clone;
@@ -16,7 +16,7 @@ pub struct StorageBalance {
     available: U128,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Copy, Clone)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Copy, Clone)]
 pub struct AccountStorageBalance {
     pub total: u128,
     pub available: u128,

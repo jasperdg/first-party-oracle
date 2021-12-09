@@ -203,6 +203,10 @@ impl FirstPartyOracle {
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
+    pub fn get_balance(&self) -> AccountStorageBalance {
+        let user = self.users.get(&env::predecessor_account_id()).unwrap_or(User::new());
+        user.get_balance()
+    }
     #[payable]
     pub fn deposit(&mut self) {
         let user = self
@@ -212,6 +216,12 @@ impl FirstPartyOracle {
         self.users
             .insert(&env::predecessor_account_id(), &user);
         self.add_balance(&env::predecessor_account_id(), env::attached_deposit());
+    }
+    // TODO see if flow of methods makes sense and secure
+    // TODO does this need to be payable?
+    pub fn claim_earnings(&mut self) -> Promise {
+        // TODO see if this withdraws and executes transfer atomically
+        fungible_token_transfer(self.payment_token.clone(), env::predecessor_account_id(), self.withdraw_balance(env::predecessor_account_id()))
     }
 
     // TODO clean up these get functions
@@ -237,7 +247,11 @@ impl FirstPartyOracle {
         
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
-
+    pub fn set_fee(&mut self, fee: U128) {
+        let mut user = self.users.get(&env::predecessor_account_id()).unwrap();
+        user.set_fee(u128::from(fee));
+        self.users.insert(&env::predecessor_account_id(), &user);
+    }
     // TODO make optional return
     // TODO SET OUTCOME ON REQUESTER 
     #[payable]
@@ -248,18 +262,6 @@ impl FirstPartyOracle {
         self.users.get(&user).unwrap().get_entry_expect(&pair)
         // TODO make sure user pair has RECENT data in it 
     }
-    // TODO see if flow of methods makes sense and secure
-    pub fn claim_earnings(&mut self) -> Promise {
-        // TODO see if this withdraws and executes transfer atomically
-        fungible_token_transfer(self.payment_token.clone(), env::predecessor_account_id(), self.withdraw_balance(env::predecessor_account_id()))
-    }
-
-    pub fn set_fee(&mut self, fee: U128) {
-        let mut user = self.users.get(&env::predecessor_account_id()).unwrap();
-        user.set_fee(u128::from(fee));
-        self.users.insert(&env::predecessor_account_id(), &user);
-    }
-
     // TODO make optional return
     #[payable]
     pub fn aggregate_avg(

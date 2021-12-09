@@ -33,9 +33,11 @@ impl TestAccount {
                 near_deposit(&account, init_balance() / 2);
                 Self { account }
             }
-            None => Self {
-                account: init_simulator(None),
-            },
+            None => {
+                Self {
+                    account: init_simulator(None),
+                }
+            }
         }
     }
 
@@ -142,6 +144,7 @@ impl TestAccount {
     }
 
      /*** Getters ***/
+     // get token balance of account_id, or return token balance of master account
      pub fn get_token_balance(&self, account_id: Option<String>) -> u128 {
         let account_id = match account_id {
             Some(account_id) => account_id,
@@ -154,6 +157,24 @@ impl TestAccount {
                 TOKEN_CONTRACT_ID.to_string(),
                 "ft_balance_of",
                 json!({ "account_id": account_id }).to_string().as_bytes(),
+            )
+            .unwrap_json();
+
+        res.into()
+    }
+
+    pub fn get_oracle_balance(&self, account_id: Option<String>) -> u128 {
+        let account_id = match account_id {
+            Some(account_id) => account_id,
+            None => self.account.account_id(),
+        };
+
+        let res: U128 = self
+            .account
+            .view(
+                ORACLE_CONTRACT_ID.to_string(),
+                "get_balance",
+                &[],
             )
             .unwrap_json();
 

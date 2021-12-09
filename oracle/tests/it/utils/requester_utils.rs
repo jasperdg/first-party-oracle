@@ -4,7 +4,7 @@ pub struct RequesterUtils {
 }
 
 impl RequesterUtils {
-    pub fn new(master_account: &TestAccount) -> Self {
+    pub fn new(account_id: &TestAccount) -> Self {
         // deploy token
         let contract = deploy!(
             // Contract Proxy
@@ -14,7 +14,7 @@ impl RequesterUtils {
             // Bytes of contract
             bytes: &REQUESTER_CONTRACT_WASM_BYTES,
             // User deploying the contract,
-            signer_account: master_account.account,
+            signer_account: account_id.account,
             deposit: to_yocto("1000"),
             // init method
             init_method: new(
@@ -24,13 +24,13 @@ impl RequesterUtils {
 
         storage_deposit(
             TOKEN_CONTRACT_ID,
-            &master_account.account,
+            &account_id.account,
             SAFE_STORAGE_AMOUNT,
             Some(REQUESTER_CONTRACT_ID.to_string()),
         );
         storage_deposit(
             ORACLE_CONTRACT_ID,
-            &master_account.account,
+            &account_id.account,
             10000000000000000000000,
             Some(REQUESTER_CONTRACT_ID.to_string()),
         );

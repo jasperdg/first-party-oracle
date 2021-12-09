@@ -36,6 +36,7 @@ impl StorageManager for TokenContract {
         let account_id = account_id
             .map(|a| a.into())
             .unwrap_or_else(|| env::predecessor_account_id());
+        // TODO is this meant to be get? and 0 -> amount?
         if self.accounts.insert(&account_id, &0).is_some() {
             env::panic(b"The account is already registered");
         }

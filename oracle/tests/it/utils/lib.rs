@@ -1,4 +1,3 @@
-use flux_sdk::{consts::PERCENTAGE_DIVISOR, outcome::Outcome};
 use near_sdk::{
   json_types::{
       U128,
@@ -45,28 +44,39 @@ near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
 pub struct TestUtils {
   pub master_account: TestAccount,
   pub oracle_contract: ContractAccount<OracleContract>,
-  pub requester_contract: ContractAccount<RequesterContract>,
   pub token_contract: ContractAccount<TokenContract>,
   pub alice: account_utils::TestAccount,
   pub bob: account_utils::TestAccount,
-  pub jack: account_utils::TestAccount
+  pub jack: account_utils::TestAccount,
+  // pub requester_contract: ContractAccount<RequesterContract>,
 }
 
 
 impl TestUtils {
   pub fn init() -> Self {
+    println!("Setting up Master account...");
     let master_account = TestAccount::new(None, None);
-    let token_init_res = token_utils::TokenUtils::new(&master_account); // Init token
+    println!("Master account set up. Deploying token...");
+    let token_init_res = token_utils::TokenUtils::new(&master_account);
+    println!("Token deployed. Deploying oracle...");
     let oracle_init_res = oracle_utils::OracleUtils::new(&master_account); 
-    let requester_init_res = requester_utils::RequesterUtils::new(&master_account);
+    println!("Oracle deployed. Setting up alice...");
+    let alice = TestAccount::new(Some(&master_account.account), Some("alice"));
+    println!("Alice set up. Setting up bob...");
+    let bob = TestAccount::new(Some(&master_account.account), Some("bob"));
+    println!("Bob set up. Setting up jack...");
+    let jack = TestAccount::new(Some(&master_account.account), Some("jack"));
+    println!("Jack set up. Deploying requester for alice...");
+    // let requester_init_res = requester_utils::RequesterUtils::new(&alice);
+    // println!("Requester for alice set up");
     Self {
-        alice: TestAccount::new(Some(&master_account.account), Some("alice")),
-        bob: TestAccount::new(Some(&master_account.account), Some("bob")),
-        jack: TestAccount::new(Some(&master_account.account), Some("jack")),
         master_account: master_account,
-        oracle_contract: oracle_init_res.contract,
-        requester_contract: requester_init_res.contract,
         token_contract: token_init_res.contract,
+        oracle_contract: oracle_init_res.contract,
+        alice: alice,
+        bob: bob,
+        jack: jack,
+        // requester_contract: requester_init_res.contract,
     }
   }
 }
