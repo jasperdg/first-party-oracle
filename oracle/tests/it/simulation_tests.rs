@@ -1,5 +1,7 @@
 use crate::utils::*;
 
+
+
 #[test]
 fn everything_initializes_correctly() {
     let init_res = TestUtils::init();
@@ -12,13 +14,13 @@ fn everything_initializes_correctly() {
     //     SAFE_STORAGE_AMOUNT,
     //     "token storage requirement not satisfied for account");
     assert_eq!(init_res.jack.get_token_balance(None),
-        SAFE_STORAGE_AMOUNT,
+        INIT_BALANCE,
         "token storage requirement not satisfied for account");
     assert_eq!(init_res.alice.get_token_balance(None),
-        SAFE_STORAGE_AMOUNT,
+        INIT_BALANCE,
         "token storage requirement not satisfied for account");
     assert_eq!(init_res.bob.get_token_balance(None),
-        SAFE_STORAGE_AMOUNT,
+        INIT_BALANCE,
         "token storage requirement not satisfied for account");
     
     // assert_eq!(init_res.jack.get_oracle_balance(None),

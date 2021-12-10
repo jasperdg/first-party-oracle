@@ -29,6 +29,7 @@ const TOKEN_CONTRACT_ID: &str = "token";
 pub const ORACLE_CONTRACT_ID: &str = "oracle";
 pub const REQUESTER_CONTRACT_ID: &str = "requester";
 pub const SAFE_STORAGE_AMOUNT: u128 = 1250000000000000000000;
+pub const INIT_BALANCE: u128 = 50000000000000000000000000000;
 
 type OracleContract = oracle::FirstPartyOracleContract;
 type RequesterContract = requester::RequesterContract;
@@ -48,7 +49,7 @@ pub struct TestUtils {
   pub alice: account_utils::TestAccount,
   pub bob: account_utils::TestAccount,
   pub jack: account_utils::TestAccount,
-  // pub requester_contract: ContractAccount<RequesterContract>,
+  pub requester_contract: ContractAccount<RequesterContract>,
 }
 
 
@@ -67,8 +68,8 @@ impl TestUtils {
     println!("Bob set up. Setting up jack...");
     let jack = TestAccount::new(Some(&master_account.account), Some("jack"));
     println!("Jack set up. Deploying requester for alice...");
-    // let requester_init_res = requester_utils::RequesterUtils::new(&alice);
-    // println!("Requester for alice set up");
+    let requester_init_res = requester_utils::RequesterUtils::new(&alice);
+    println!("Requester for alice set up");
     Self {
         master_account: master_account,
         token_contract: token_init_res.contract,
@@ -76,7 +77,7 @@ impl TestUtils {
         alice: alice,
         bob: bob,
         jack: jack,
-        // requester_contract: requester_init_res.contract,
+        requester_contract: requester_init_res.contract,
     }
   }
 }
