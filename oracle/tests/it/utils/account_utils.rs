@@ -143,8 +143,20 @@ impl TestAccount {
         res
     }
 
+    pub fn deposit(&self, deposit: u128) -> ExecutionResult {
+        let res = self.account.call(
+            ORACLE_CONTRACT_ID.to_string(),
+            "deposit",
+            &[],
+            MAX_GAS,
+            deposit,
+        );
+
+        assert!(res.is_ok(), "ft_transfer failed with res: {:?}", res);
+        res
+    }
+
      /*** Getters ***/
-     // get token balance of account_id, or return token balance of master account
      pub fn get_token_balance(&self, account_id: Option<String>) -> u128 {
         let account_id = match account_id {
             Some(account_id) => account_id,
@@ -174,7 +186,7 @@ impl TestAccount {
             .view(
                 ORACLE_CONTRACT_ID.to_string(),
                 "get_balance",
-                &[],
+                json!({ "account_id": account_id }).to_string().as_bytes(),
             )
             .unwrap_json();
 
