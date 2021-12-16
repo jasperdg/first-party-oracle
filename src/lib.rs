@@ -75,7 +75,7 @@ impl RequesterContract {
             .get(&env::predecessor_account_id())
             .unwrap_or(Provider::new());
 
-        assert!(provider.pairs.get(&pair).is_some(), "pair already exists");
+        assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
         provider.pairs.insert(
             &pair,
