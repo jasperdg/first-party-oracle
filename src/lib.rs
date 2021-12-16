@@ -1,9 +1,9 @@
+mod helpers;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::{WrappedTimestamp, U128};
 use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault};
-
 near_sdk::setup_alloc!();
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
@@ -80,11 +80,14 @@ impl RequesterContract {
         }
     }
 
+    #[payable]
     pub fn create_pair(&mut self, pair: String, decimals: u16, initial_price: U128) {
+        let initial_storage_usage = env::storage_usage();
         let mut provider = self
             .providers
             .get(&env::predecessor_account_id())
             .unwrap_or(Provider::new());
+
         assert!(provider.pairs.get(&pair).is_some(), "pair already exists");
 
         provider.pairs.insert(
@@ -98,6 +101,8 @@ impl RequesterContract {
 
         self.providers
             .insert(&env::predecessor_account_id(), &provider);
+
+        helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
     pub fn pair_exists(&self, pair: String, provider: AccountId) -> bool {
@@ -107,11 +112,16 @@ impl RequesterContract {
             .is_some()
     }
 
+    #[payable]
     pub fn push_data(&mut self, pair: String, price: U128) {
+        let initial_storage_usage = env::storage_usage();
+
         let mut provider = self.get_provider_expect(&env::predecessor_account_id());
         provider.set_price(pair, price);
         self.providers
             .insert(&env::predecessor_account_id(), &provider);
+        
+        helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
     pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
