@@ -1,11 +1,12 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::{WrappedTimestamp, U128};
 use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault};
 
 near_sdk::setup_alloc!();
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
 pub struct PriceEntry {
     price: U128,                   // Last reported price
     decimals: u16,                 // Amount of decimals (e.g. if 2, 100 = 1.00)
