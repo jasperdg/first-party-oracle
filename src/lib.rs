@@ -55,27 +55,14 @@ enum StorageKeys {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct RequesterContract {
-    pub oracle: AccountId,
     pub providers: LookupMap<AccountId, Provider>, // maps:  AccountId => Provider
-}
-
-// Private methods
-impl RequesterContract {
-    pub fn assert_oracle(&self) {
-        assert_eq!(
-            &env::predecessor_account_id(),
-            &self.oracle,
-            "ERR_INVALID_ORACLE_ADDRESS"
-        );
-    }
 }
 
 #[near_bindgen]
 impl RequesterContract {
     #[init]
-    pub fn new(oracle: AccountId) -> Self {
+    pub fn new() -> Self {
         Self {
-            oracle,
             providers: LookupMap::new(StorageKeys::Providers),
         }
     }
