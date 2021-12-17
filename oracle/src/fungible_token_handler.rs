@@ -47,52 +47,63 @@ impl FungibleTokenReceiver for FirstPartyOracle {
 
         let payload: Payload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
 
-        self.assert_pairs_exist_and_payment_sufficient(payload.pairs, payload.providers, amount);
+        self.assert_pairs_exist_and_payment_sufficient_and_recent_enough(payload.pairs, payload.providers, payload.min_last_update, amount);
+        // TODO assert that all pairs have been updated within timeframe
 
-        // let unspent = match payload.avg {
-        //     Some(i) => {
-        //         // agg 
-        //         // TODO see if you can do this all on top level match
-        //         match i {
-        //             true => {
-        //                 // agg avg, pay fees for providers gotten
-        //                 // set_outcome on requester contract & return 0
-        //             }
-        //             false => {
-        //                 // agg collect, pay fees for providers gotten
-        //                 // set_outcome on requester contract & return 0
-        //             }
-        //         }
-        //     }
-        //     None => {
-        //         // get entry
-        //         // if data, set_outcome on requester contract & return 0
-        //         // if no data, return amount to user
-        //         let outcome = self.get_entry(payload.pairs[0], payload.providers[0], amount);
-        //     }
-        //     // Payload::NewDataRequest(payload) => {
-        //     //     assert_eq!(config.payment_token, env::predecessor_account_id(), "ERR_WRONG_PAYMENT_TOKEN");
-        //     //     self.ft_dr_new_callback(sender.clone(), amount.into(), payload).into()
-        //     // },
-        //     // Payload::StakeDataRequest(payload) => {
-        //     //     assert_eq!(config.stake_token, env::predecessor_account_id(), "ERR_WRONG_STAKE_TOKEN");
-        //     //     self.dr_stake(sender.clone(), amount.into(), payload)
-        //     // },
-        // };
+        let mut unspent = amount;
+        let mut outcomes = None;
+        match payload.avg {
+            Some(i) => {
+                // agg 
+                // TODO see if you can do this all on top level match
+                match i {
+                    true => {
+                        // agg avg, pay fees for providers gotten
+                        // set_outcome on requester contract & return 0
+                        outcomes = self.agg
+                    }
+                    false => {
+                        // agg collect, pay fees for providers gotten
+                        // set_outcome on requester contract & return 0
+                    }
+                }
+            }
+            None => {
+                // get entry
+                // if data, set_outcome on requester contract & return 0
+                // if no data, return amount to user
+                outcomes = vec![self.get_entry(payload.pairs[0], payload.providers[0], amount)];
+            }
+            // Payload::NewDataRequest(payload) => {
+            //     assert_eq!(config.payment_token, env::predecessor_account_id(), "ERR_WRONG_PAYMENT_TOKEN");
+            //     self.ft_dr_new_callback(sender.clone(), amount.into(), payload).into()
+            // },
+            // Payload::StakeDataRequest(payload) => {
+            //     assert_eq!(config.stake_token, env::predecessor_account_id(), "ERR_WRONG_STAKE_TOKEN");
+            //     self.dr_stake(sender.clone(), amount.into(), payload)
+            // },
+        };
 
-        let outcome = self.get_entry(payload.pairs[0], payload.providers[0], amount);
+        match outcomes {
+            Some(i) => {
+                unspent -= self.get_fee_total(payload.pairs, payload.providers)
+            }
+            None => {
+
+            }
+        }
 
         self.use_storage(&sender, initial_storage_usage, account.available);
 
-        // unspent
         requester::set_outcomes(
             vec![payload.pairs[0]], 
             vec![payload.providers[0]], 
-            vec![outcome],
+            outcomes,
             &env::predecessor_account_id(),
             1,
             GAS_BASE_SET_OUTCOME / 10
-        )
+        );
+        unspent
     }
 }
 

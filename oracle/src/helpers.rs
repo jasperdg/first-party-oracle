@@ -20,3 +20,16 @@ pub fn refund_storage(initial_storage: StorageUsage, sender_id: AccountId) {
         Promise::new(sender_id).transfer(refund_amount);
     }
 }
+
+pub fn round(n: f64, precision: u32) -> f64 {
+    (n * 10_u32.pow(precision) as f64).round() / 10_i32.pow(precision) as f64
+}
+
+pub fn precision(x: f64) -> Option<u32> {
+    for digits in 0..std::f64::DIGITS {
+        if round(x, digits) == x {
+            return Some(digits);
+        }
+    }
+    None
+}
