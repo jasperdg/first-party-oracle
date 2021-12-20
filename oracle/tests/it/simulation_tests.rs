@@ -2,40 +2,40 @@ use crate::utils::*;
 
 
 
-#[test]
-fn accounts_initialized_with_balance() {
-    let init_res = TestUtils::init();
-    assert_eq!(init_res.jack.get_token_balance(None),
-        INIT_BALANCE,
-        "token storage requirement not satisfied for account");
-    assert_eq!(init_res.alice.get_token_balance(None),
-        INIT_BALANCE,
-        "token storage requirement not satisfied for account");
-    assert_eq!(init_res.bob.get_token_balance(None),
-        INIT_BALANCE,
-        "token storage requirement not satisfied for account");
-}
+// #[test]
+// fn accounts_initialized_with_balance() {
+//     let init_res = TestUtils::init();
+//     assert_eq!(init_res.jack.get_token_balance(None),
+//         INIT_BALANCE,
+//         "token storage requirement not satisfied for account");
+//     assert_eq!(init_res.alice.get_token_balance(None),
+//         INIT_BALANCE,
+//         "token storage requirement not satisfied for account");
+//     assert_eq!(init_res.bob.get_token_balance(None),
+//         INIT_BALANCE,
+//         "token storage requirement not satisfied for account");
+// }
 
-#[test]
-fn users_set_up_with_fpo_by_deposit() {
-    let init_res = TestUtils::init();
-    init_res.alice.deposit(10);
-    println!(
-        "Request interface before data request creation: {}",
-        init_res
-            .alice
-            .get_token_balance(Some(ORACLE_CONTRACT_ID.to_string()))
-    );
-    // assert_eq!(init_res.jack.get_oracle_balance(None),
-    //     10000000000000000000000,
-    //     "oracle storage requirement not satisfied for account");
-    // assert_eq!(init_res.alice.get_oracle_balance(None),
-    //     10000000000000000000000,
-    //     "oracle storage requirement not satisfied for account");
-    // assert_eq!(init_res.bob.get_oracle_balance(None),
-    //     10000000000000000000000,
-    //     "oracle storage requirement not satisfied for account");
-}
+// #[test]
+// fn users_set_up_with_fpo_by_deposit() {
+//     let init_res = TestUtils::init();
+//     init_res.alice.deposit(10);
+//     println!(
+//         "Request interface before data request creation: {}",
+//         init_res
+//             .alice
+//             .get_token_balance(Some(ORACLE_CONTRACT_ID.to_string()))
+//     );
+//     // assert_eq!(init_res.jack.get_oracle_balance(None),
+//     //     10000000000000000000000,
+//     //     "oracle storage requirement not satisfied for account");
+//     // assert_eq!(init_res.alice.get_oracle_balance(None),
+//     //     10000000000000000000000,
+//     //     "oracle storage requirement not satisfied for account");
+//     // assert_eq!(init_res.bob.get_oracle_balance(None),
+//     //     10000000000000000000000,
+//     //     "oracle storage requirement not satisfied for account");
+// }
     // assert!(init_res.oracle_contract.contrac)
 
 //     let init_balance_alice = init_res.alice.get_token_balance(None);

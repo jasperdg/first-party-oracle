@@ -18,7 +18,6 @@ impl OracleUtils {
             deposit: to_yocto("1000"),
             // init method
             init_method: new(
-                master_account.account.account_id().to_string(),
                 TOKEN_CONTRACT_ID.to_string()
             )
         );

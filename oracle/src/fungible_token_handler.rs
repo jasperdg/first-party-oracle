@@ -27,15 +27,13 @@ pub struct Payload {
     avg: Option<bool>,
     pairs: Vec<String>,
     providers: Vec<AccountId>,
-    min_last_update: Option<WrappedTimestamp>
-    // NewDataRequest(NewDataRequestArgs),
-    // StakeDataRequest(StakeDataRequestArgs),
+    min_last_update: WrappedTimestamp,
 }
 
 #[near_bindgen]
 impl FungibleTokenReceiver for FirstPartyOracle {
     // @returns amount of unused tokens
-    fn ft_on_transfer(
+    pub fn ft_on_transfer(
         &mut self,
         sender_id: ValidAccountId,
         amount: U128,
@@ -48,61 +46,44 @@ impl FungibleTokenReceiver for FirstPartyOracle {
         let payload: Payload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
 
         self.assert_pairs_exist_and_payment_sufficient_and_recent_enough(payload.pairs, payload.providers, payload.min_last_update, amount);
-        // TODO assert that all pairs have been updated within timeframe
-
         let mut unspent = amount;
         let mut outcomes = None;
         match payload.avg {
             Some(i) => {
-                // agg 
                 // TODO see if you can do this all on top level match
                 match i {
                     true => {
-                        // agg avg, pay fees for providers gotten
-                        // set_outcome on requester contract & return 0
-                        outcomes = self.agg
+                        // agg avg
+                        outcomes = vec![self.aggregate_avg(payload.pairs, payload.providers, payload.min_last_update)];
                     }
                     false => {
-                        // agg collect, pay fees for providers gotten
-                        // set_outcome on requester contract & return 0
+                        // agg collect
+                        outcomes = self.aggregate_collect(payload.pairs, payload.providers, payload.min_last_update);
                     }
                 }
             }
             None => {
                 // get entry
-                // if data, set_outcome on requester contract & return 0
-                // if no data, return amount to user
                 outcomes = vec![self.get_entry(payload.pairs[0], payload.providers[0], amount)];
             }
-            // Payload::NewDataRequest(payload) => {
-            //     assert_eq!(config.payment_token, env::predecessor_account_id(), "ERR_WRONG_PAYMENT_TOKEN");
-            //     self.ft_dr_new_callback(sender.clone(), amount.into(), payload).into()
-            // },
-            // Payload::StakeDataRequest(payload) => {
-            //     assert_eq!(config.stake_token, env::predecessor_account_id(), "ERR_WRONG_STAKE_TOKEN");
-            //     self.dr_stake(sender.clone(), amount.into(), payload)
-            // },
         };
-
-        match outcomes {
-            Some(i) => {
-                unspent -= self.get_fee_total(payload.pairs, payload.providers)
-            }
-            None => {
-
-            }
-        }
 
         self.use_storage(&sender, initial_storage_usage, account.available);
 
+        // TODO add check to make sure promise fulfilled before returning unspent
         requester::set_outcomes(
-            vec![payload.pairs[0]], 
-            vec![payload.providers[0]], 
+            payload.pairs, 
+            payload.providers, 
             outcomes,
             &env::predecessor_account_id(),
             1,
             GAS_BASE_SET_OUTCOME / 10
         );
+
+        if let Some(i) = outcomes {
+            unspent -= self.get_fee_total(payload.pairs, payload.providers);
+        }
+        
         unspent
     }
 }

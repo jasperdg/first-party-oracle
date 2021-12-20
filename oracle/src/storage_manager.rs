@@ -1,12 +1,11 @@
 use super::*;
 use near_sdk::json_types::{ValidAccountId, U128};
-// use near_sdk::serde::Serialize;
-use near_sdk::{Promise, Balance};
-use std::marker::Copy;
-use std::clone::Clone;
+use near_sdk::serde::Serialize;
+use near_sdk::{Promise};
 
 /// Price per 1 byte of storage from mainnet config after `0.18` release and protocol version `42`.
 /// It's 10 times lower than the genesis price.
+
 pub const STORAGE_MINIMUM_BALANCE: Balance = 10_000_000_000_000_000_000_000;
 
 #[derive(Serialize)]
@@ -16,7 +15,7 @@ pub struct StorageBalance {
     available: U128,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Copy, Clone)]
+#[derive(BorshDeserialize, BorshSerialize, Copy, Clone, Serialize, Deserialize)]
 pub struct AccountStorageBalance {
     pub total: u128,
     pub available: u128,
@@ -52,26 +51,30 @@ impl StorageManager for FirstPartyOracle {
     #[payable]
     fn storage_deposit(&mut self, account_id: Option<ValidAccountId>) -> StorageBalance {
         let amount = env::attached_deposit();
-        // TODO tf does this do
         let account_id = account_id
             .map(|a| a.into())
             .unwrap_or_else(|| env::predecessor_account_id());
-
-        let mut account = self.get_storage_account(&account_id);
+        
+        let mut balance = self.get_storage_account_balance(&account_id);
         assert!(
             amount >= STORAGE_MINIMUM_BALANCE,
             "Deposit must be at least {} yoctoNEAR",
             STORAGE_MINIMUM_BALANCE
         );
 
-        account.add_balance(amount);
+        balance.available += amount;
+        balance.total += amount;
 
-        self.users.insert(&account_id, &account);
+        let storage_balance = StorageBalance {
+            total: U128(balance.total),
+            available: U128(balance.available),
+        };
 
-        StorageBalance {
-            total: U128(account.get_balance().total),
-            available: U128(account.get_balance().available),
-        }
+        self.set_storage_account_balance(&account_id, balance);
+
+        // self.providers.insert(&account_id, &balance);
+
+        storage_balance
     }
 
     #[payable]
@@ -79,26 +82,23 @@ impl StorageManager for FirstPartyOracle {
         assert_one_yocto();
         let amount: Balance = amount.into();
         let account_id = env::predecessor_account_id();
-        let mut account = self.get_storage_account(&account_id);
-        
-        // assert!(
-        //     amount <= account.get_balance().available,
-        //     "Not enough storage available"
-        // );
+        let mut balance = self.get_storage_account_balance(&account_id);
 
-        // account.available -= amount;
-        // account.total -= amount;
+        assert!(amount <= balance.available, "Not enough storage available");
 
-        account.withdraw_balance(Some(amount));
+        balance.available -= amount;
+        balance.total -= amount;
 
-        self.users.insert(&account_id, &account);
+        let storage_balance = StorageBalance {
+            total: U128(balance.total),
+            available: U128(balance.available),
+        };
+
+        self.set_storage_account_balance(&account_id, balance);
 
         Promise::new(account_id).transfer(amount);
 
-        StorageBalance {
-            total: U128(account.get_balance().total),
-            available: U128(account.get_balance().available),
-        }
+        storage_balance
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
@@ -109,35 +109,43 @@ impl StorageManager for FirstPartyOracle {
     }
 
     fn storage_balance_of(&self, account_id: ValidAccountId) -> Option<StorageBalance> {
-        self.users
+        Some(self.providers
             .get(account_id.as_ref())
-            .map(|account| StorageBalance {
-                total: U128(account.get_balance().total),
-                available: U128(account.get_balance().available),
+            .unwrap()
+            .get_balance())
+            .map(|balance| StorageBalance {
+                total: U128(balance.total),
+                available: U128(balance.available),
             })
     }
 }
 
 impl FirstPartyOracle {
-    pub fn get_storage_account(&self, account_id: &AccountId) -> User {
-        self.users
+    pub fn get_storage_account_balance(&self, account_id: &AccountId) -> AccountStorageBalance {
+        let provider = self.providers
             .get(account_id)
-            .unwrap_or(User::new())
+            .unwrap_or(Provider::new());
+        provider.get_balance()
     }
 
-    // TODO see how use_storage is used, and see if it can use all variables internal to User
-    // TODO FIX FOR DIFFERENCE
+    pub fn set_storage_account_balance(&mut self, account_id: &AccountId, balance: AccountStorageBalance) {
+        let mut provider = self.providers
+            .get(account_id)
+            .unwrap_or(Provider::new());
+        provider.set_balance(balance);
+        self.providers.insert(account_id, &provider);
+    }
+
     pub fn use_storage(
         &mut self,
         sender_id: &AccountId,
         initial_storage_usage: u64,
         initial_available_balance: u128,
     ) {
-        // if used more storage, deduct from balance
         if env::storage_usage() >= initial_storage_usage {
-            // difference = how much storage used vs how much used before
+            // used more storage, deduct from balance
             let difference: u128 = u128::from(env::storage_usage() - initial_storage_usage);
-            let mut account = self.get_storage_account(sender_id);
+            let mut balance = self.get_storage_account_balance(sender_id);
             let cost = difference * env::STORAGE_PRICE_PER_BYTE;
             assert!(
                 cost <= initial_available_balance,
@@ -146,18 +154,18 @@ impl FirstPartyOracle {
                 initial_available_balance,
                 cost
             );
-            account.set_available_balance(initial_available_balance - difference * env::STORAGE_PRICE_PER_BYTE);
-            // account.available = initial_available_balance - difference * env::STORAGE_PRICE_PER_BYTE;
+            balance.available =
+                initial_available_balance - difference * env::STORAGE_PRICE_PER_BYTE;
 
-            self.users.insert(sender_id, &account);
+            self.set_storage_account_balance(sender_id, balance);
         } else {
             // freed up storage, add to balance
             let difference: u128 = u128::from(initial_storage_usage - env::storage_usage());
-            let mut account = self.get_storage_account(sender_id);
-            // account.available = initial_available_balance + difference * env::STORAGE_PRICE_PER_BYTE;
+            let mut balance = self.get_storage_account_balance(sender_id);
+            balance.available =
+                initial_available_balance + difference * env::STORAGE_PRICE_PER_BYTE;
 
-            account.set_available_balance(initial_available_balance + difference * env::STORAGE_PRICE_PER_BYTE);
-            self.users.insert(sender_id, &account);
+            self.set_storage_account_balance(sender_id, balance);
         }
     }
 }
@@ -179,14 +187,6 @@ mod mock_token_basic_tests {
 
     fn token() -> AccountId {
         "token.near".to_string()
-    }
-
-    fn _target() -> AccountId {
-        "target.near".to_string()
-    }
-
-    fn gov() -> AccountId {
-        "gov.near".to_string()
     }
 
     fn to_valid(account: AccountId) -> ValidAccountId {
@@ -217,10 +217,10 @@ mod mock_token_basic_tests {
     #[test]
     fn storage_manager_deposit() {
         testing_env!(get_context(token()));
-        let mut contract = FirstPartyOracle::new(gov(), token());
+        let mut contract = FirstPartyOracle::new(token());
 
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, 0);
+        let balance = contract.get_storage_account_balance(&alice());
+        assert_eq!(balance.available, 0);
 
         let amount = 10u128.pow(24);
 
@@ -230,8 +230,8 @@ mod mock_token_basic_tests {
         testing_env!(c);
         contract.storage_deposit(Some(to_valid(alice())));
 
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, amount);
+        let balance = contract.get_storage_account_balance(&alice());
+        assert_eq!(balance.available, amount);
 
         //deposit again
         let mut c: VMContext = get_context(alice());
@@ -239,17 +239,17 @@ mod mock_token_basic_tests {
         testing_env!(c);
         contract.storage_deposit(Some(to_valid(alice())));
 
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, amount * 2);
+        let balance = contract.get_storage_account_balance(&alice());
+        assert_eq!(balance.available, amount * 2);
     }
 
     #[test]
     fn storage_manager_withdraw() {
         testing_env!(get_context(token()));
-        let mut contract = FirstPartyOracle::new(gov(), token());
+        let mut contract = FirstPartyOracle::new(token());
 
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, 0);
+        let balance = contract.get_storage_account_balance(&alice());
+        assert_eq!(balance.available, 0);
 
         let amount = 10u128.pow(24);
 
@@ -265,18 +265,18 @@ mod mock_token_basic_tests {
         testing_env!(c);
 
         contract.storage_withdraw(U128(amount / 2));
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, amount / 2);
+        let account = contract.get_storage_account_balance(&alice());
+        assert_eq!(account.available, amount / 2);
     }
 
     #[test]
     #[should_panic(expected = "Not enough storage available")]
     fn storage_manager_withdraw_too_much() {
         testing_env!(get_context(token()));
-        let mut contract = FirstPartyOracle::new(gov(), token());
+        let mut contract = FirstPartyOracle::new(token());
 
-        let account = contract.get_storage_account(&alice());
-        assert_eq!(account.get_balance().available, 0);
+        let balance = contract.get_storage_account_balance(&alice());
+        assert_eq!(balance.available, 0);
 
         let amount = 10u128.pow(24);
 
