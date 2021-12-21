@@ -18,7 +18,8 @@ impl RequesterUtils {
             deposit: to_yocto("1000"),
             // init method
             init_method: new(
-                ORACLE_CONTRACT_ID.to_string()
+                ORACLE_CONTRACT_ID.to_string(),
+                TOKEN_CONTRACT_ID.to_string()
             )
         );
 
