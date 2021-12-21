@@ -202,8 +202,8 @@ impl FirstPartyOracle {
         pairs
             .iter()
             .enumerate()
-            .map(|(i, account_id)| {
-                return self.get_entry(&pairs[i], &providers[i], self.providers.get(&providers[i]).unwrap().get_fee())
+            .map(|(i, pair)| {
+                return self.get_entry(&pair, &providers[i], self.providers.get(&providers[i]).unwrap().get_fee())
             })
             .collect()
     }

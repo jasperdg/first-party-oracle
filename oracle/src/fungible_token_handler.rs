@@ -46,6 +46,7 @@ impl FungibleTokenReceiver for FirstPartyOracle {
         let payload: Payload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
 
         // TODO: make into 3 assertions
+        // TODO: move assertions to "child" methods
         self.assert_pairs_exist_and_payment_sufficient_and_recent_enough(payload.pairs, payload.providers, payload.min_last_update, amount);
         let mut unspent = amount;
 
