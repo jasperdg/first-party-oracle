@@ -45,9 +45,14 @@ impl FungibleTokenReceiver for FirstPartyOracle {
 
         let payload: Payload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
 
+        // TODO: make into 3 assertions
         self.assert_pairs_exist_and_payment_sufficient_and_recent_enough(payload.pairs, payload.providers, payload.min_last_update, amount);
         let mut unspent = amount;
+
+        // TODO: Create an `Outcomes` enum instead of forcing the return value into a Option<Vec<U128>>
         let mut outcomes = None;
+
+        // TODO: Better to add a `method` attribute to the message and use that to determine what function to call, this is unreadable
         match payload.avg {
             Some(i) => {
                 // TODO see if you can do this all on top level match
