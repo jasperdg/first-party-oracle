@@ -2372,7 +2372,6 @@ name = "requester"
 version = "0.1.0"
 dependencies = [
  "flux-sdk",
- "near-contract-standards",
  "near-sdk",
  "serde",
 ]

@@ -1,9 +1,8 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::serde::{Serialize, Deserialize};
-use near_sdk::json_types::{U128};
-use near_sdk::{ Promise, env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Balance};
-use flux_sdk::{ types::WrappedTimestamp };
+use near_sdk::json_types::{U128, WrappedTimestamp};
+use near_sdk::{serde_json, Promise, env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Balance};
 near_sdk::setup_alloc!();
 use storage_manager::AccountStorageBalance;
 use fungible_token::fungible_token_transfer;
@@ -21,6 +20,48 @@ pub struct PriceEntry {
     decimals: u32,    // Amount of decimals (e.g. if 2, 100 = 1.00)
     last_update: u64, // Time of report
 }
+
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+pub struct Outcome {
+    entry: Option<PriceEntry>,
+    refund: Balance
+}
+
+// TODO is this stupid to have for just the aggregate_collect
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+pub struct Outcomes {
+    entries: Option<Vec<PriceEntry>>,
+    refund: Balance
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum OutcomePayload {
+    Outcome(Outcome),
+    Outcomes(Outcomes),
+    None
+}
+
+pub struct ResponsePayload {
+    method: String,
+    pairs: Vec<String>,
+    providers: Vec<AccountId>,
+    outcome: OutcomePayload,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RequestPayload {
+    method: String,
+    pairs: Vec<String>,
+    providers: Vec<AccountId>,
+    min_last_update: WrappedTimestamp,
+}
+
+// TODO perhaps this is better?
+// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+// pub struct Outcomes {
+//     outcomes: Vec<Outcome>,
+//     aggregated_refund: Balance
+// }
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Provider {
@@ -109,18 +150,11 @@ pub struct FirstPartyOracle {
 
 // Private methods
 impl FirstPartyOracle {
-    pub fn assert_provider_exists(&self, provider: AccountId) {
-        assert!(self.providers.get(&provider).is_some());
-    }
-    fn assert_same_length(&self, pairs: &Vec<String>, providers: &Vec<AccountId>) {
-        assert_eq!(
-            pairs.len(),
-            providers.len(),
-            "pairs and provider should be of equal length"
-        );
-        assert!(pairs.len() > 0, "need to provide at least 1 pair");
-    }
-    fn assert_provider_pair_exists(&self, pair: &String, provider: &AccountId) {
+    // TODO change assertions to boolean conditionals to allow function to finish 
+    fn assert_provider_pair_exists(
+            &self, 
+            pair: &String, 
+            provider: &AccountId) {
         assert!(
             self.providers.get(&provider)
             .unwrap()
@@ -132,27 +166,47 @@ impl FirstPartyOracle {
             provider
         );
     }
-    // asserts that provider and pairs exist for providers query,
-    // and that provider has provided enough tokens to pay for data,
-    // and data is within min last update
-    pub fn assert_pairs_exist_and_payment_sufficient_and_recent_enough(
+    fn assert_pair_updated(
             &self, 
-            pairs: Vec<String>, 
-            providers: Vec<AccountId>, 
-            min_last_update: u64,
+            pair: &String, 
+            provider: &AccountId, 
+            min_last_update: u64) {
+        let pair_update: u64 = self.providers.get(provider)
+            .unwrap()
+            .pairs
+            .get(pair)
+            .unwrap()
+            .last_update;
+        assert!(min_last_update < pair_update, 
+            "{} not updated recently enough from {}",
+            pair,
+            provider);
+    }
+    pub fn assert_payment_sufficient(
+            &self, 
+            provider: &AccountId, 
             amount: u128) {
-        let fees = self.get_fee_total(&pairs, &providers);
+        let fee = self.providers
+            .get(provider)
+            .unwrap()
+            .get_fee();
         assert!(
-            amount >= fees,
+            amount >= fee,
             "Not enough deposit for this query, {} required when {} provided",
-            fees,
+            fee,
             amount
         );
-        for i in 0..providers.len() {
-            self.assert_provider_pair_exists(&pairs[i], &providers[i]);
-            assert!(min_last_update < self.providers.get(&providers[i]).unwrap().pairs.get(&pairs[i]).unwrap().last_update,
-                "")
-        }
+    }
+    fn assert_same_length(
+            &self, 
+            pairs: &Vec<String>, 
+            providers: &Vec<AccountId>) {
+        assert_eq!(
+            pairs.len(),
+            providers.len(),
+            "pairs and provider should be of equal length"
+        );
+        assert!(pairs.len() > 0, "need to provide at least 1 pair");
     }
     fn add_earnings(&mut self, provider: &AccountId, amount: u128) {
         self.providers.get(provider).unwrap().add_earnings(amount);
@@ -160,52 +214,103 @@ impl FirstPartyOracle {
     fn withdraw_earnings(&mut self, provider: AccountId) -> u128 {
         self.providers.get(&provider).unwrap().withdraw_earnings(None)
     }
-    fn get_entry(&mut self, pair: &String, provider: &AccountId, amount: u128) -> Option<PriceEntry> {
-        match self.providers.get(provider).unwrap().get_entry(pair, amount) {
-            Some(entry) => {
-                self.add_earnings(provider, amount);
-                Some(entry)
+    fn run_method(&mut self, amount: u128, msg: String) -> OutcomePayload {
+        let payload: RequestPayload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
+        let min_last_update = u64::from(payload.min_last_update);
+        match payload.method.as_ref() {
+            "get_entry" => {
+                OutcomePayload::Outcome(self.get_entry(&payload.pairs[0], &payload.providers[0], min_last_update, amount))
+            },
+            "aggregate_avg" => {
+                OutcomePayload::Outcome(self.aggregate_avg(payload.pairs, payload.providers, min_last_update, amount))
+            },
+            "aggregate_collect" => {
+                OutcomePayload::Outcomes(self.aggregate_collect(payload.pairs, payload.providers, min_last_update, amount))
             }
-            None => None
+            &_ => {
+                println!("how tf did you end up here");
+                OutcomePayload::None
+            }
         }
     }
-    fn aggregate_avg(
+    fn get_entry(
+            &mut self, 
+            pair: &String, 
+            provider: &AccountId, 
+            min_last_update: u64, 
+            amount_left: u128
+        ) -> Outcome {
+
+        self.assert_provider_pair_exists(pair, provider);
+        self.assert_payment_sufficient(provider, amount_left);
+        self.assert_pair_updated(pair, provider, min_last_update);
+        match self.providers.get(provider).unwrap().get_entry(pair, amount_left) {
+            Some(entry) => {
+                let fee = self.providers.get(&provider).unwrap().get_fee();
+                self.add_earnings(provider, fee);
+                Outcome {
+                    entry: Some(entry),
+                    refund: amount_left - fee
+                }
+            }
+            None => 
+                Outcome {
+                    entry: None,
+                    refund: amount_left
+                }
+        }
+    }
+    pub fn aggregate_avg(
             &mut self,
             pairs: Vec<String>,
             providers: Vec<AccountId>,
-            min_last_update: WrappedTimestamp
-        ) -> Option<PriceEntry> {
-
+            min_last_update: u64,
+            mut amount_left: u128
+        ) -> Outcome {
+        self.assert_same_length(&pairs, &providers);
         let min_last_update: u64 = min_last_update.into();
-
         let mut cum = 0.0_f64;
         for i in 0..pairs.len() {
-            let entry = self.get_entry(&pairs[i], &providers[i], self.providers.get(&providers[i]).unwrap().get_fee()).unwrap();
-            let price_decimals = u128::from(entry.price) as f64 / 10_i32.pow(entry.decimals) as f64;
-            cum += price_decimals;
+            let outcome: Outcome = self.get_entry(&pairs[i], &providers[i], min_last_update, amount_left);
+            if let Some(e) = outcome.entry {
+                let price_decimals = u128::from(e.price) as f64 / 10_i32.pow(e.decimals) as f64;
+                cum += price_decimals;
+                amount_left = outcome.refund;
+            }
         }
         let avg = cum / providers.len() as f64;
         // uses number of decimals from aggregation for decimals in answer
         let decimals = helpers::precision(avg).unwrap_or(0);
-        Some(PriceEntry {
-            price: (avg * 10_i32.pow(decimals) as f64) as u128,
-            decimals: decimals,
-            last_update: min_last_update
-        })
+        Outcome {
+            entry: Some(PriceEntry {
+                price: (avg * 10_i32.pow(decimals) as f64) as u128,
+                decimals: decimals,
+                last_update: min_last_update
+            }),
+            refund: amount_left
+        }
     }
 
     pub fn aggregate_collect(
             &mut self,
             pairs: Vec<String>,
-            providers: Vec<AccountId>
-            ) -> Option<Vec<PriceEntry>> {
-        pairs
-            .iter()
-            .enumerate()
-            .map(|(i, account_id)| {
-                return self.get_entry(&pairs[i], &providers[i], self.providers.get(&providers[i]).unwrap().get_fee())
-            })
-            .collect()
+            providers: Vec<AccountId>,
+            min_last_update: u64,
+            mut amount_left: u128
+        ) -> Outcomes {
+        self.assert_same_length(&pairs, &providers);
+        let mut entries: Vec<PriceEntry> = vec![];
+        for i in 0..pairs.len() {
+            let outcome: Outcome = self.get_entry(&pairs[i], &providers[i], min_last_update, amount_left);
+            if let Some(e) = outcome.entry {
+                entries.push(e);
+                amount_left = outcome.refund
+            }
+        }
+        Outcomes {
+            entries: Some(entries),
+            refund: amount_left
+        }
     }
 }
 
@@ -274,11 +379,11 @@ impl FirstPartyOracle {
 
     /********* REQUESTER METHODS *********/
 
-    pub fn get_earnings(&self, account_id: AccountId) -> Balance {
-        self.assert_provider_exists(account_id.clone());
-        let provider = self.providers.get(&account_id).unwrap();
-        provider.get_earnings()
-    }
+    // pub fn get_earnings(&self, account_id: AccountId) -> Balance {
+    //     self.assert_provider_exists(account_id.clone());
+    //     let provider = self.providers.get(&account_id).unwrap();
+    //     provider.get_earnings()
+    // }
     pub fn get_fee_total(&self, pairs: &Vec<String>, providers: &Vec<AccountId>) -> u128 {
         self.assert_same_length(pairs, providers);
         let mut fee_total: u128 = 0;

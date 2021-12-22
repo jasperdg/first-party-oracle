@@ -21,15 +21,6 @@ trait RequesterContract {
     fn set_outcomes(pairs: Vec<String>, providers: Vec<AccountId>, entries: Vec<PriceEntry>);
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Payload {
-    // TODO see if optionals work from json null
-    avg: Option<bool>,
-    pairs: Vec<String>,
-    providers: Vec<AccountId>,
-    min_last_update: WrappedTimestamp,
-}
-
 #[near_bindgen]
 impl FungibleTokenReceiver for FirstPartyOracle {
     // @returns amount of unused tokens
@@ -43,53 +34,25 @@ impl FungibleTokenReceiver for FirstPartyOracle {
         let initial_storage_usage = env::storage_usage();
         let account = self.get_storage_account(&sender);
 
-        let payload: Payload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
-
-        // TODO: make into 3 assertions
-        self.assert_pairs_exist_and_payment_sufficient_and_recent_enough(payload.pairs, payload.providers, payload.min_last_update, amount);
-        let mut unspent = amount;
-
-        // TODO: Create an `Outcomes` enum instead of forcing the return value into a Option<Vec<U128>>
-        let mut outcomes = None;
-
-        // TODO: Better to add a `method` attribute to the message and use that to determine what function to call, this is unreadable
-        match payload.avg {
-            Some(i) => {
-                // TODO see if you can do this all on top level match
-                match i {
-                    true => {
-                        // agg avg
-                        outcomes = vec![self.aggregate_avg(payload.pairs, payload.providers, payload.min_last_update)];
-                    }
-                    false => {
-                        // agg collect
-                        outcomes = self.aggregate_collect(payload.pairs, payload.providers, payload.min_last_update);
-                    }
-                }
-            }
-            None => {
-                // get entry
-                outcomes = vec![self.get_entry(payload.pairs[0], payload.providers[0], amount)];
-            }
-        };
+        let mut outcomes: OutcomePayload = self.run_method(amount, msg);
 
         self.use_storage(&sender, initial_storage_usage, account.available);
 
+        let response_payload = ResponsePayload {
+            method: payload.method,
+            pairs: payload.pairs,
+            providers: payload.providers,
+            outcome: outcomes
+        };
+
         // TODO add check to make sure promise fulfilled before returning unspent
         requester::set_outcomes(
-            payload.pairs, 
-            payload.providers, 
-            outcomes,
+            response_payload,
             &env::predecessor_account_id(),
             1,
             GAS_BASE_SET_OUTCOME / 10
         );
-
-        if let Some(i) = outcomes {
-            unspent -= self.get_fee_total(payload.pairs, payload.providers);
-        }
-        
-        unspent
+        outcomes.refund
     }
 }
 
