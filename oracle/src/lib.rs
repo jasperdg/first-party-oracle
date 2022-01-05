@@ -14,7 +14,7 @@ mod helpers;
 mod storage_manager;
 mod fungible_token;
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Copy, Clone)]
 pub struct PriceEntry {
     price: u128,      // Last reported price
     decimals: u32,    // Amount of decimals (e.g. if 2, 100 = 1.00)
@@ -23,30 +23,23 @@ pub struct PriceEntry {
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 pub struct Outcome {
-    entry: Option<PriceEntry>,
-    refund: Balance
-}
-
-// TODO is this stupid to have for just the aggregate_collect
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
-pub struct Outcomes {
     entries: Option<Vec<PriceEntry>>,
     refund: Balance
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum OutcomePayload {
-    Outcome(Outcome),
-    Outcomes(Outcomes),
-    None
-}
+// TODO is this stupid to have for just the aggregate_collect
+// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+// pub struct Outcomes {
+//     entries: Option<Vec<PriceEntry>>,
+//     refund: Balance
+// }
 
-pub struct ResponsePayload {
-    method: String,
-    pairs: Vec<String>,
-    providers: Vec<AccountId>,
-    outcome: OutcomePayload,
-}
+// #[derive(Serialize, Deserialize)]
+// pub enum OutcomePayload {
+//     Outcome(Outcome),
+//     Outcomes(Outcomes),
+//     None
+// }
 
 #[derive(Serialize, Deserialize)]
 pub struct RequestPayload {
@@ -214,22 +207,25 @@ impl FirstPartyOracle {
     fn withdraw_earnings(&mut self, provider: AccountId) -> u128 {
         self.providers.get(&provider).unwrap().withdraw_earnings(None)
     }
-    fn run_method(&mut self, amount: u128, msg: String) -> OutcomePayload {
+    fn run_method(&mut self, amount: u128, msg: String) -> Outcome {
         let payload: RequestPayload = serde_json::from_str(&msg).expect("Failed to parse the payload, invalid `msg` format");
         let min_last_update = u64::from(payload.min_last_update);
         match payload.method.as_ref() {
             "get_entry" => {
-                OutcomePayload::Outcome(self.get_entry(&payload.pairs[0], &payload.providers[0], min_last_update, amount))
+                self.get_entry(&payload.pairs[0], &payload.providers[0], min_last_update, amount)
             },
             "aggregate_avg" => {
-                OutcomePayload::Outcome(self.aggregate_avg(payload.pairs, payload.providers, min_last_update, amount))
+                self.aggregate_avg(payload.pairs, payload.providers, min_last_update, amount)
             },
             "aggregate_collect" => {
-                OutcomePayload::Outcomes(self.aggregate_collect(payload.pairs, payload.providers, min_last_update, amount))
+                self.aggregate_collect(payload.pairs, payload.providers, min_last_update, amount)
             }
             &_ => {
                 println!("how tf did you end up here");
-                OutcomePayload::None
+                Outcome{
+                    entries: None,
+                    refund: 0
+                }
             }
         }
     }
@@ -249,13 +245,13 @@ impl FirstPartyOracle {
                 let fee = self.providers.get(&provider).unwrap().get_fee();
                 self.add_earnings(provider, fee);
                 Outcome {
-                    entry: Some(entry),
+                    entries: Some(vec![entry]),
                     refund: amount_left - fee
                 }
             }
             None => 
                 Outcome {
-                    entry: None,
+                    entries: None,
                     refund: amount_left
                 }
         }
@@ -272,8 +268,8 @@ impl FirstPartyOracle {
         let mut cum = 0.0_f64;
         for i in 0..pairs.len() {
             let outcome: Outcome = self.get_entry(&pairs[i], &providers[i], min_last_update, amount_left);
-            if let Some(e) = outcome.entry {
-                let price_decimals = u128::from(e.price) as f64 / 10_i32.pow(e.decimals) as f64;
+            if let Some(e) = outcome.entries {
+                let price_decimals = u128::from(e[0].price) as f64 / 10_i32.pow(e[0].decimals) as f64;
                 cum += price_decimals;
                 amount_left = outcome.refund;
             }
@@ -282,11 +278,11 @@ impl FirstPartyOracle {
         // uses number of decimals from aggregation for decimals in answer
         let decimals = helpers::precision(avg).unwrap_or(0);
         Outcome {
-            entry: Some(PriceEntry {
+            entries: Some(vec![PriceEntry {
                 price: (avg * 10_i32.pow(decimals) as f64) as u128,
                 decimals: decimals,
                 last_update: min_last_update
-            }),
+            }]),
             refund: amount_left
         }
     }
@@ -297,17 +293,17 @@ impl FirstPartyOracle {
             providers: Vec<AccountId>,
             min_last_update: u64,
             mut amount_left: u128
-        ) -> Outcomes {
+        ) -> Outcome {
         self.assert_same_length(&pairs, &providers);
         let mut entries: Vec<PriceEntry> = vec![];
         for i in 0..pairs.len() {
             let outcome: Outcome = self.get_entry(&pairs[i], &providers[i], min_last_update, amount_left);
-            if let Some(e) = outcome.entry {
-                entries.push(e);
+            if let Some(e) = outcome.entries {
+                entries.push(e[0]);
                 amount_left = outcome.refund
             }
         }
-        Outcomes {
+        Outcome {
             entries: Some(entries),
             refund: amount_left
         }

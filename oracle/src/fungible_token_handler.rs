@@ -34,7 +34,7 @@ impl FungibleTokenReceiver for FirstPartyOracle {
         let initial_storage_usage = env::storage_usage();
         let account = self.get_storage_account(&sender);
 
-        let mut outcomes: OutcomePayload = self.run_method(amount, msg);
+        let mut outcome = self.run_method(amount, msg);
 
         self.use_storage(&sender, initial_storage_usage, account.available);
 
@@ -42,7 +42,7 @@ impl FungibleTokenReceiver for FirstPartyOracle {
             method: payload.method,
             pairs: payload.pairs,
             providers: payload.providers,
-            outcome: outcomes
+            outcome: outcome
         };
 
         // TODO add check to make sure promise fulfilled before returning unspent
