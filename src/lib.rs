@@ -49,7 +49,6 @@ impl Provider {
 #[derive(BorshStorageKey, BorshSerialize)]
 enum StorageKeys {
     Providers,
-    Provider,
 }
 
 #[near_bindgen]
