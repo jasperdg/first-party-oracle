@@ -20,10 +20,10 @@ pub struct Provider {
 }
 
 impl Provider {
-    pub fn new() -> Self {
+    pub fn new(account_id: &AccountId) -> Self {
         Self {
             query_fee: 0,
-            pairs: LookupMap::new(StorageKeys::Provider),
+            pairs: LookupMap::new(format!("p_{}", account_id).as_bytes().to_vec()),
         }
     }
 
@@ -73,7 +73,7 @@ impl RequesterContract {
         let mut provider = self
             .providers
             .get(&env::predecessor_account_id())
-            .unwrap_or(Provider::new());
+            .unwrap_or_else(|| Provider::new(&env::predecessor_account_id()));
 
         assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
