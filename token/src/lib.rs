@@ -62,6 +62,10 @@ impl TokenContract {
             account_storage_usage: 0,
         };
         let initial_storage_usage = env::storage_usage();
+
+        let dao_id = env::predecessor_account_id();
+        this.accounts.insert(&dao_id, &1000000000);
+
         let tmp_account_id = unsafe { String::from_utf8_unchecked(vec![b'a'; 64]) };
         this.accounts.insert(&tmp_account_id, &0u128);
         this.account_storage_usage = env::storage_usage() - initial_storage_usage;

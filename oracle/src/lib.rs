@@ -79,11 +79,8 @@ impl Provider {
     // pub fn get_pairs(&self) -> LookupMap<String, PriceEntry> {
     //     self.pairs
     // }
-    pub fn get_entry(&mut self, pair: &String, amount: u128) -> Option<PriceEntry> {
-        let entry = self.pairs
-            .get(pair);
-        self.add_earnings(amount);
-        entry
+    pub fn get_entry(&mut self, pair: &String) -> Option<PriceEntry> {
+        self.pairs.get(pair)
     }
     pub fn get_earnings(&self) -> Balance {
         self.earnings
@@ -100,11 +97,12 @@ impl Provider {
     pub fn get_fee(&mut self) -> u128 {
         self.query_fee
     }
-    pub fn set_price(&mut self, pair: String, price: u128) {
-        let mut entry = self.pairs.get(&pair).expect("pair does not exist yet");
-        entry.last_update = env::block_timestamp().into();
-        entry.price = price;
-
+    pub fn set_price(&mut self, pair: String, price: u128, decimals: u32) {
+        let entry = PriceEntry {
+                price: price,      // Last reported price
+                decimals: decimals,    // Amount of decimals (e.g. if 2, 100 = 1.00)
+                last_update: env::block_timestamp().into(),
+        };
         self.pairs.insert(&pair, &entry);
     }
     fn add_earnings(&mut self, amount: u128) {
@@ -144,62 +142,44 @@ pub struct FirstPartyOracle {
 // Private methods
 impl FirstPartyOracle {
     // TODO change assertions to boolean conditionals to allow function to finish 
-    fn assert_provider_pair_exists(
+    fn provider_pair_exists(
             &self, 
             pair: &String, 
-            provider: &AccountId) {
-        assert!(
-            self.providers.get(&provider)
+            provider: &AccountId) -> bool {
+        self.providers.get(&provider)
             .unwrap()
             .pairs
             .get(&pair)
-            .is_some(),
-            "{} doesn't exist for {}",
-            pair,
-            provider
-        );
+            .is_some()
     }
-    fn assert_pair_updated(
+    fn pair_updated(
             &self, 
             pair: &String, 
             provider: &AccountId, 
-            min_last_update: u64) {
+            min_last_update: u64) -> bool {
         let pair_update: u64 = self.providers.get(provider)
             .unwrap()
             .pairs
             .get(pair)
             .unwrap()
             .last_update;
-        assert!(min_last_update < pair_update, 
-            "{} not updated recently enough from {}",
-            pair,
-            provider);
+        min_last_update < pair_update
     }
-    pub fn assert_payment_sufficient(
+    pub fn payment_sufficient(
             &self, 
             provider: &AccountId, 
-            amount: u128) {
+            amount: u128) -> bool {
         let fee = self.providers
             .get(provider)
             .unwrap()
             .get_fee();
-        assert!(
-            amount >= fee,
-            "Not enough deposit for this query, {} required when {} provided",
-            fee,
-            amount
-        );
+        amount >= fee
     }
-    fn assert_same_length(
+    fn same_length(
             &self, 
             pairs: &Vec<String>, 
-            providers: &Vec<AccountId>) {
-        assert_eq!(
-            pairs.len(),
-            providers.len(),
-            "pairs and provider should be of equal length"
-        );
-        assert!(pairs.len() > 0, "need to provide at least 1 pair");
+            providers: &Vec<AccountId>) -> bool {
+        pairs.len() == providers.len() && pairs.len() > 0
     }
     fn add_earnings(&mut self, provider: &AccountId, amount: u128) {
         self.providers.get(provider).unwrap().add_earnings(amount);
@@ -229,6 +209,24 @@ impl FirstPartyOracle {
             }
         }
     }
+    fn run_checks(&self,
+            pair: &String, 
+            provider: &AccountId, 
+            min_last_update: u64, 
+            amount_left: u128
+        ) -> bool {
+
+        if !self.provider_pair_exists(pair, provider) {
+            return false
+        }
+        if !self.payment_sufficient(provider, amount_left) {
+            return false
+        }
+        if !self.pair_updated(pair, provider, min_last_update) {
+            return false
+        }
+        true
+    }
     fn get_entry(
             &mut self, 
             pair: &String, 
@@ -236,24 +234,19 @@ impl FirstPartyOracle {
             min_last_update: u64, 
             amount_left: u128
         ) -> Outcome {
-
-        self.assert_provider_pair_exists(pair, provider);
-        self.assert_payment_sufficient(provider, amount_left);
-        self.assert_pair_updated(pair, provider, min_last_update);
-        match self.providers.get(provider).unwrap().get_entry(pair, amount_left) {
-            Some(entry) => {
-                let fee = self.providers.get(&provider).unwrap().get_fee();
-                self.add_earnings(provider, fee);
-                Outcome {
-                    entries: Some(vec![entry]),
-                    refund: amount_left - fee
-                }
+        if self.run_checks(pair, provider, min_last_update, amount_left) {
+            let entry = self.providers.get(provider).unwrap().get_entry(pair).unwrap();
+            let fee = self.providers.get(&provider).unwrap().get_fee();
+            self.add_earnings(provider, fee);
+            Outcome {
+                entries: Some(vec![entry]),
+                refund: amount_left - fee
             }
-            None => 
-                Outcome {
-                    entries: None,
-                    refund: amount_left
-                }
+        } else {
+            Outcome {
+                entries: None,
+                refund: amount_left
+            }
         }
     }
     pub fn aggregate_avg(
@@ -263,7 +256,12 @@ impl FirstPartyOracle {
             min_last_update: u64,
             mut amount_left: u128
         ) -> Outcome {
-        self.assert_same_length(&pairs, &providers);
+        if !self.same_length(&pairs, &providers) {
+            return Outcome {
+                entries: None,
+                refund: amount_left
+            }
+        }
         let min_last_update: u64 = min_last_update.into();
         let mut cum = 0.0_f64;
         for i in 0..pairs.len() {
@@ -275,7 +273,7 @@ impl FirstPartyOracle {
             }
         }
         let avg = cum / providers.len() as f64;
-        // uses number of decimals from aggregation for decimals in answer
+        // TODO uses number of decimals from aggregation for decimals in answer
         let decimals = helpers::precision(avg).unwrap_or(0);
         Outcome {
             entries: Some(vec![PriceEntry {
@@ -294,7 +292,12 @@ impl FirstPartyOracle {
             min_last_update: u64,
             mut amount_left: u128
         ) -> Outcome {
-        self.assert_same_length(&pairs, &providers);
+        if !self.same_length(&pairs, &providers) {
+            return Outcome {
+                entries: None,
+                refund: amount_left
+            }
+        }
         let mut entries: Vec<PriceEntry> = vec![];
         for i in 0..pairs.len() {
             let outcome: Outcome = self.get_entry(&pairs[i], &providers[i], min_last_update, amount_left);
@@ -314,10 +317,8 @@ impl FirstPartyOracle {
 impl FirstPartyOracle {
     #[init]
     pub fn new(
-        // oracle: AccountId, 
         payment_token: AccountId) -> Self {
         Self {
-            // oracle,
             payment_token,
             providers: LookupMap::new(StorageKeys::Providers),
         }
@@ -325,30 +326,30 @@ impl FirstPartyOracle {
 
     /********* PROVIDER METHODS *********/
 
-    #[payable]
-    pub fn create_pair(&mut self, pair: String, decimals: u32, initial_price: U128) {
-        let initial_storage_usage = env::storage_usage();
-        let mut provider = self
-            .providers
-            .get(&env::predecessor_account_id())
-            .unwrap_or(Provider::new());
+    // #[payable]
+    // pub fn create_pair(&mut self, pair: String, decimals: u32, initial_price: U128) {
+    //     let initial_storage_usage = env::storage_usage();
+    //     let mut provider = self
+    //         .providers
+    //         .get(&env::predecessor_account_id())
+    //         .unwrap_or(Provider::new());
             
-        // TODO test whether this actually creates the new provider 
-        assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
+    //     // TODO test whether this actually creates the new provider 
+    //     assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
-        provider.pairs.insert(
-            &pair,
-            &PriceEntry {
-                price: u128::from(initial_price),
-                decimals,
-                last_update: env::block_timestamp().into(),
-            },
-        );
+    //     provider.pairs.insert(
+    //         &pair,
+    //         &PriceEntry {
+    //             price: u128::from(initial_price),
+    //             decimals,
+    //             last_update: env::block_timestamp().into(),
+    //         },
+    //     );
 
-        self.providers
-            .insert(&env::predecessor_account_id(), &provider);
-        helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
-    }
+    //     self.providers
+    //         .insert(&env::predecessor_account_id(), &provider);
+    //     helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
+    // }
     
     pub fn claim_earnings(&mut self) -> Promise {
         fungible_token_transfer(self.payment_token.clone(), 
@@ -357,13 +358,11 @@ impl FirstPartyOracle {
     }
 
     #[payable]
-    pub fn push_data(&mut self, pair: String, price: U128) {
-        self.assert_provider_pair_exists(&pair, &env::predecessor_account_id());
+    pub fn push_data(&mut self, pair: String, price: U128, decimals: u32) {
         let initial_storage_usage = env::storage_usage();
-        let mut provider = self.providers.get(&env::predecessor_account_id()).unwrap();
-        provider.set_price(pair, u128::from(price));
-        self.providers
-            .insert(&env::predecessor_account_id(), &provider);
+        let mut provider = self.providers.get(&env::predecessor_account_id()).unwrap_or(Provider::new());
+        provider.set_price(pair, u128::from(price), decimals);
+        self.providers.insert(&env::predecessor_account_id(), &provider);
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
 
@@ -375,19 +374,22 @@ impl FirstPartyOracle {
 
     /********* REQUESTER METHODS *********/
 
-    // pub fn get_earnings(&self, account_id: AccountId) -> Balance {
-    //     self.assert_provider_exists(account_id.clone());
-    //     let provider = self.providers.get(&account_id).unwrap();
-    //     provider.get_earnings()
-    // }
     pub fn get_fee_total(&self, pairs: &Vec<String>, providers: &Vec<AccountId>) -> u128 {
-        self.assert_same_length(pairs, providers);
+        assert!(self.same_length(pairs, providers), "must provide same number of pairs and providers to get fees for");
         let mut fee_total: u128 = 0;
         for i in 0..pairs.len() {
-            self.assert_provider_pair_exists(&pairs[i], &providers[i]);
-            fee_total += self.providers.get(&providers[i]).unwrap().get_fee();
+            if self.provider_pair_exists(&pairs[i], &providers[i]) {
+                fee_total += self.providers.get(&providers[i]).unwrap().get_fee();
+            }
         }
         fee_total
+    }
+
+    pub fn get_provider_pairs(&self, account_id: &AccountId) -> LookupMap<String, PriceEntry> {
+        self.providers
+            .get(account_id)
+            .unwrap()
+            .pairs
     }
 
     pub fn get_provider_exists(&self, account_id: &AccountId) -> bool {

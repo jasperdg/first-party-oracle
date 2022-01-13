@@ -143,18 +143,18 @@ impl TestAccount {
         res
     }
 
-    pub fn deposit(&self, deposit: u128) -> ExecutionResult {
-        let res = self.account.call(
-            ORACLE_CONTRACT_ID.to_string(),
-            "deposit",
-            &[],
-            MAX_GAS,
-            deposit,
-        );
-
-        assert!(res.is_ok(), "ft_transfer failed with res: {:?}", res);
-        res
-    }
+    // pub fn deposit(&self, deposit: u128) -> ExecutionResult {
+    //     let res = self.account.call(
+    //         TOKEN_CONTRACT_ID.to_string(),
+    //         "storage_deposit",
+    //         &[],
+    //         MAX_GAS,
+    //         deposit,
+    //     );
+    //     assert!(res.is_ok(), "ft_transfer failed with res: {:?}", res);
+    //     self.ft_transfer(receiver: &str, amount: u128)
+    //     res
+    // }
 
      /*** Getters ***/
      pub fn get_token_balance(&self, account_id: Option<String>) -> u128 {
@@ -175,23 +175,23 @@ impl TestAccount {
         res.into()
     }
 
-    pub fn get_oracle_balance(&self, account_id: Option<String>) -> u128 {
-        let account_id = match account_id {
-            Some(account_id) => account_id,
-            None => self.account.account_id(),
-        };
+    // pub fn get_oracle_balance(&self, account_id: Option<String>) -> u128 {
+    //     let account_id = match account_id {
+    //         Some(account_id) => account_id,
+    //         None => self.account.account_id(),
+    //     };
 
-        let res: U128 = self
-            .account
-            .view(
-                ORACLE_CONTRACT_ID.to_string(),
-                "get_balance",
-                json!({ "account_id": account_id }).to_string().as_bytes(),
-            )
-            .unwrap_json();
+    //     let res: U128 = self
+    //         .account
+    //         .view(
+    //             ORACLE_CONTRACT_ID.to_string(),
+    //             "get_balance",
+    //             json!({ "account_id": account_id }).to_string().as_bytes(),
+    //         )
+    //         .unwrap_json();
 
-        res.into()
-    }
+    //     res.into()
+    // }
 
     pub fn get_entry(&self, pair: String, provider: AccountId) -> PriceEntry {
         let res: PriceEntry = self.account.view(

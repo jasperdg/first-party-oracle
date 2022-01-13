@@ -34,7 +34,7 @@ impl FungibleTokenReceiver for FirstPartyOracle {
         let initial_storage_usage = env::storage_usage();
         let account = self.get_storage_account(&sender);
 
-        let mut outcome = self.run_method(amount, msg);
+        let outcome = self.run_method(amount, msg);
 
         self.use_storage(&sender, initial_storage_usage, account.available);
 

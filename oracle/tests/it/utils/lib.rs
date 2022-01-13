@@ -28,7 +28,7 @@ use token;
 const TOKEN_CONTRACT_ID: &str = "token";
 pub const ORACLE_CONTRACT_ID: &str = "oracle";
 pub const REQUESTER_CONTRACT_ID: &str = "requester";
-pub const SAFE_STORAGE_AMOUNT: u128 = 1250000000000000000000;
+pub const SAFE_STORAGE_AMOUNT: u128 = 1900000000000000000000;
 pub const INIT_BALANCE: u128 = 50000000000000000000000000000;
 
 type OracleContract = oracle::FirstPartyOracleContract;
