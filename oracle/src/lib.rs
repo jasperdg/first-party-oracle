@@ -7,9 +7,6 @@ near_sdk::setup_alloc!();
 use storage_manager::AccountStorageBalance;
 use fungible_token::fungible_token_transfer;
 
-// TODO replace all fungible token logic with built in standards implementation
-// near_contract_standards::impl_fungible_token_core!(FirstPartyOracle, token, on_tokens_burned);
-
 mod helpers;
 mod storage_manager;
 mod fungible_token;
@@ -27,20 +24,6 @@ pub struct Outcome {
     refund: Balance
 }
 
-// TODO is this stupid to have for just the aggregate_collect
-// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
-// pub struct Outcomes {
-//     entries: Option<Vec<PriceEntry>>,
-//     refund: Balance
-// }
-
-// #[derive(Serialize, Deserialize)]
-// pub enum OutcomePayload {
-//     Outcome(Outcome),
-//     Outcomes(Outcomes),
-//     None
-// }
-
 #[derive(Serialize, Deserialize)]
 pub struct RequestPayload {
     method: String,
@@ -48,13 +31,6 @@ pub struct RequestPayload {
     providers: Vec<AccountId>,
     min_last_update: WrappedTimestamp,
 }
-
-// TODO perhaps this is better?
-// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
-// pub struct Outcomes {
-//     outcomes: Vec<Outcome>,
-//     aggregated_refund: Balance
-// }
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Provider {
@@ -141,7 +117,6 @@ pub struct FirstPartyOracle {
 
 // Private methods
 impl FirstPartyOracle {
-    // TODO change assertions to boolean conditionals to allow function to finish 
     fn provider_pair_exists(
             &self, 
             pair: &String, 
@@ -334,7 +309,6 @@ impl FirstPartyOracle {
     //         .get(&env::predecessor_account_id())
     //         .unwrap_or(Provider::new());
             
-    //     // TODO test whether this actually creates the new provider 
     //     assert!(provider.pairs.get(&pair).is_none(), "pair already exists");
 
     //     provider.pairs.insert(
@@ -383,13 +357,6 @@ impl FirstPartyOracle {
             }
         }
         fee_total
-    }
-
-    pub fn get_provider_pairs(&self, account_id: &AccountId) -> LookupMap<String, PriceEntry> {
-        self.providers
-            .get(account_id)
-            .unwrap()
-            .pairs
     }
 
     pub fn get_provider_exists(&self, account_id: &AccountId) -> bool {
