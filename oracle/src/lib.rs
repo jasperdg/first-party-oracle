@@ -73,10 +73,12 @@ impl Provider {
     pub fn get_fee(&mut self) -> u128 {
         self.query_fee
     }
-    pub fn set_price(&mut self, pair: String, price: u128, decimals: u32) {
+    pub fn set_price(&mut self, pair: String, price: u128) {
+        let last_entry = self.pairs.get(&pair).unwrap();
+
         let entry = PriceEntry {
                 price: price,      // Last reported price
-                decimals: decimals,    // Amount of decimals (e.g. if 2, 100 = 1.00)
+                decimals: last_entry.decimals,    // Amount of decimals (e.g. if 2, 100 = 1 unit)
                 last_update: env::block_timestamp().into(),
         };
         self.pairs.insert(&pair, &entry);
@@ -336,7 +338,7 @@ impl FirstPartyOracle {
         let initial_storage_usage = env::storage_usage();
         let mut provider = self.providers.get(&env::predecessor_account_id()).unwrap_or(Provider::new());
         provider.assert_pair_exists(&pair);
-        provider.set_price(pair, u128::from(price), decimals);
+        provider.set_price(pair, u128::from(price));
         self.providers.insert(&env::predecessor_account_id(), &provider);
         helpers::refund_storage(initial_storage_usage, env::predecessor_account_id());
     }
