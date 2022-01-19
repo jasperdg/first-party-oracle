@@ -7,4 +7,6 @@ if [ ! -d ./res ]; then
     mkdir ./res
 fi
 
-cp ./target/wasm32-unknown-unknown/release/request_interface.wasm ./res
+cp ./target/wasm32-unknown-unknown/release/oracle.wasm ./res
+cp ./target/wasm32-unknown-unknown/release/token.wasm ./res
+cp ./target/wasm32-unknown-unknown/release/requester.wasm ./res
